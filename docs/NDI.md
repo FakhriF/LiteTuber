@@ -12,6 +12,9 @@ Alur: **kamera HP → PC (render) → NDI → OBS laptop (rekam)**
   - Windows 11 baru: **Phone Link → Use phone as webcam**.
   - Kalau tidak ada: **Iriun**, **DroidCam**, atau **Camo**. USB lebih stabil daripada WiFi.
 - Mic: paling gampang dari HP juga (DroidCam/Iriun mendukung audio), atau mic USB yang dicolok ke PC.
+- **Node.js 18+** di PC — cuma dipakai untuk server lokal (`serve.mjs`), bukan untuk render. Kalau folder `dist/` sudah ada (hasil build dari laptop), cukup `node serve.mjs` tanpa `npm install`. Kalau clone dari git: `npm install` sekali, lalu `npm start`.
+
+Jangan buka app-nya dari PC lewat `http://IP-laptop:8770`. Chrome hanya mengizinkan kamera/mic di `localhost` atau HTTPS, jadi server harus jalan di komputer yang sama dengan browser-nya.
 
 ## 0. Install NDI
 
