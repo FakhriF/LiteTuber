@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LiteTuber</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="bgImage"></div>
+    <canvas id="stage"></canvas>
+    <video id="cam" playsinline autoplay muted></video>
+
+    <div id="hint" class="hint">
+      <div>
+        <strong>LiteTuber</strong>
+        <p>Tarik file <code>.vrm</code> ke sini, atau klik <em>Pilih .vrm</em> di panel.</p>
+      </div>
+    </div>
+
+    <aside id="panel" class="panel">
+      <header>
+        <span class="logo">LiteTuber</span>
+        <span id="fps" class="badge">0 fps</span>
+        <button id="hideBtn" class="icon" title="Sembunyikan panel (H)">–</button>
+      </header>
+
+      <div class="body">
+        <section>
+          <h3>Avatar</h3>
+          <div class="row">
+            <button id="pickVrm" class="primary grow">Pilih .vrm</button>
+            <button id="clearVrm" class="icon" title="Lupakan avatar tersimpan">✕</button>
+          </div>
+          <input type="file" id="vrmFile" accept=".vrm" hidden />
+          <p id="vrmName" class="muted">belum ada avatar</p>
+        </section>
+
+        <section>
+          <h3>Tracking wajah</h3>
+          <div class="row">
+            <button id="camBtn" class="grow">Aktifkan kamera</button>
+            <button id="calBtn" disabled title="Kalibrasi posisi netral (R)">Kalibrasi</button>
+          </div>
+          <select id="camDevice" class="device" hidden>
+            <option value="">Kamera default</option>
+          </select>
+          <label class="slider">
+            <span>Sensitivitas</span>
+            <input id="sens" type="range" min="0.3" max="2.2" step="0.05" />
+            <output id="sensOut"></output>
+          </label>
+          <label class="slider">
+            <span>Smoothing</span>
+            <input id="smooth" type="range" min="0" max="0.9" step="0.02" />
+            <output id="smoothOut"></output>
+          </label>
+          <label class="check"><input id="mirror" type="checkbox" checked /> Mirror (seperti selfie)</label>
+
+          <details class="adv">
+            <summary>Lanjutan</summary>
+            <div class="row toggles">
+              <label class="check"><input id="invX" type="checkbox" /> Balik X</label>
+              <label class="check"><input id="invY" type="checkbox" /> Balik Y</label>
+              <label class="check"><input id="invZ" type="checkbox" /> Balik Z</label>
+            </div>
+            <label class="select">
+              <span>Prosesor tracking</span>
+              <select id="delegate">
+                <option value="GPU">GPU (cepat)</option>
+                <option value="CPU">CPU (kompatibel)</option>
+              </select>
+            </label>
+            <p class="muted small">Kalau kepala bergerak ke arah yang salah, coba Balik X/Y/Z.</p>
+          </details>
+        </section>
+
+        <section>
+          <h3>Mulut</h3>
+          <div class="row">
+            <button id="micBtn" class="grow">Aktifkan mic</button>
+            <select id="mouthSrc" title="Sumber gerak mulut">
+              <option value="both">Kamera + Mic</option>
+              <option value="cam">Kamera saja</option>
+              <option value="mic">Mic saja</option>
+            </select>
+          </div>
+          <label class="slider">
+            <span>Sensitivitas mic</span>
+            <input id="micGain" type="range" min="0.2" max="3" step="0.05" />
+            <output id="micGainOut"></output>
+          </label>
+          <select id="micDevice" class="device" hidden>
+            <option value="">Mic default</option>
+          </select>
+          <label class="slider">
+            <span>Level mic</span>
+            <div class="meter" id="micMeter"><i></i></div>
+            <output id="micDb">–</output>
+          </label>
+          <div class="row" style="margin-top: 9px">
+            <button id="mouthTest" class="grow">Tes gerak mulut</button>
+          </div>
+          <label class="check"><input id="autoBlink" type="checkbox" checked /> Kedip otomatis</label>
+        </section>
+
+        <section>
+          <h3>Fitur</h3>
+          <div class="row toggles">
+            <label class="check"><input id="useHead" type="checkbox" checked /> Gerak kepala</label>
+            <label class="check"><input id="useEyes" type="checkbox" checked /> Gerak mata</label>
+            <label class="check"><input id="useBlink" type="checkbox" checked /> Kedip (kamera)</label>
+            <label class="check"><input id="useExpr" type="checkbox" checked /> Ekspresi wajah</label>
+            <label class="check"><input id="useIdle" type="checkbox" checked /> Animasi idle</label>
+            <label class="check"><input id="useSpring" type="checkbox" checked /> Fisika rambut</label>
+          </div>
+          <p class="muted small">Matikan yang tidak perlu buat menghemat CPU/GPU.</p>
+        </section>
+
+        <section>
+          <h3>Latar</h3>
+          <div class="chips" id="bgChips">
+            <button data-bg="transparent">Transparan</button>
+            <button data-bg="green">Green</button>
+            <button data-bg="blue">Blue</button>
+            <button data-bg="image">Gambar…</button>
+          </div>
+          <input type="file" id="bgFile" accept="image/*" hidden />
+        </section>
+
+        <section>
+          <h3>Layar</h3>
+          <label class="select">
+            <span>Framing</span>
+            <select id="framing">
+              <option value="bust">Kepala &amp; bahu</option>
+              <option value="upper">Setengah badan</option>
+              <option value="full">Seluruh badan</option>
+            </select>
+          </label>
+          <label class="slider">
+            <span>Zoom</span>
+            <input id="zoom" type="range" min="0.6" max="2" step="0.01" />
+            <output id="zoomOut"></output>
+          </label>
+          <label class="slider">
+            <span>Exposure</span>
+            <input id="exposure" type="range" min="0.4" max="2.2" step="0.05" />
+            <output id="exposureOut"></output>
+          </label>
+          <label class="select">
+            <span>Batas FPS</span>
+            <select id="fpsCap">
+              <option value="60">60 (lancar)</option>
+              <option value="30">30 (hemat)</option>
+            </select>
+          </label>
+          <div class="row">
+            <button id="obsBtn" class="grow">Salin URL untuk OBS</button>
+          </div>
+          <p class="muted small">OBS → Sources → + → Browser → tempel URL, ukuran 1920×1080.</p>
+        </section>
+
+      </div>
+
+      <div class="statusbar">
+        <span id="statusCam">kamera: off</span>
+        <span id="statusFace">wajah: –</span>
+        <span id="statusMic">mic: off</span>
+      </div>
+    </aside>
+
+    <div id="toast"></div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
