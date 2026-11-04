@@ -7,11 +7,52 @@ Alur: **kamera HP → PC (render) → NDI → OBS laptop (rekam)**
 ## Yang dibutuhkan
 
 - PC dan laptop di jaringan yang sama. Kabel LAN paling stabil; WiFi 5 GHz masih oke.
-- OBS di kedua mesin + plugin **obs-ndi** (atau NDI Tools) di kedua mesin.
+- OBS di kedua mesin + **NDI Runtime** dan plugin **DistroAV** (dulu bernama OBS-NDI). Keduanya wajib ada di **kedua** mesin.
 - Kamera HP jadi webcam di PC:
   - Windows 11 baru: **Phone Link → Use phone as webcam**.
   - Kalau tidak ada: **Iriun**, **DroidCam**, atau **Camo**. USB lebih stabil daripada WiFi.
 - Mic: paling gampang dari HP juga (DroidCam/Iriun mendukung audio), atau mic USB yang dicolok ke PC.
+
+## 0. Install NDI
+
+NDI itu dua bagian: **NDI Runtime** (mesinnya) dan **plugin OBS** (DistroAV, dulu OBS-NDI). Install di PC dan laptop.
+
+**Arch / CachyOS (OBS native, seperti di laptop ini)**
+
+```bash
+paru -S distroav
+```
+
+Itu otomatis memasang `ndi-sdk` (menyediakan `libndi`) + plugin. Pastikan `avahi` jalan:
+
+```bash
+sudo systemctl enable --now avahi-daemon
+```
+
+Restart OBS. Cek: **Sources → + → NDI Source** dan **Tools → NDI Output Settings**.
+
+**Kalau OBS-nya Flatpak**
+
+```bash
+flatpak install com.obsproject.Studio.Plugin.DistroAV
+sudo flatpak override com.obsproject.Studio --system-talk-name=org.freedesktop.Avahi
+```
+
+**Windows**
+
+```powershell
+winget install --exact --id DistroAV.DistroAV
+```
+
+Lalu install **NDI Runtime 6.3+** dari <https://ndi.video/tools/> (NDI Tools sudah termasuk runtime). Restart OBS.
+
+**macOS**
+
+```bash
+brew install --cask distroav
+```
+
+Plus NDI Tools untuk runtime. Catatan: DistroAV butuh OBS ≥ 31.1.1.
 
 ## 1. HP jadi webcam di PC
 
@@ -40,7 +81,7 @@ Kalau nanti butuh transparan di hasil akhir, pilih background **Green** — NDI 
 2. Kalau mau audio ikut terkirim: tambah **Audio Input Capture** di scene yang sama dan pilih mic HP / mic PC.
 3. Aktifkan NDI:
    - **Tools → NDI Output Settings** → centang **Main Output**, atau
-   - **Dedicated NDI Output** dengan nama `LiteTuber` (lebih rapi kalau ada beberapa output).
+   - **Dedicated NDI Output** (NDI Filter) dengan nama `LiteTuber` (lebih rapi kalau ada beberapa output).
 4. Pastikan scene-nya menampilkan avatar saja (tanpa panel UI).
 
 ## 4. OBS di laptop (perekam)
