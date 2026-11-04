@@ -440,6 +440,8 @@ function syncUI() {
   $("exposure").value = settings.exposure;
   $("exposureOut").textContent = settings.exposure.toFixed(2);
   $("fpsCap").value = String(settings.fpsCap);
+  $("renderScale").value = String(settings.renderScale);
+  $("trackHz").value = String(settings.trackHz);
   renderer.toneMappingExposure = settings.exposure;
 }
 
@@ -570,6 +572,15 @@ $("exposure").addEventListener("input", (e) => {
   renderer.toneMappingExposure = settings.exposure;
   commit();
 });
+$("renderScale").addEventListener("change", (e) => {
+  settings.renderScale = Number(e.target.value);
+  resize();
+  commit();
+});
+$("trackHz").addEventListener("change", (e) => {
+  settings.trackHz = Number(e.target.value);
+  commit();
+});
 $("fpsCap").addEventListener("change", (e) => {
   settings.fpsCap = Number(e.target.value);
   commit();
@@ -656,7 +667,9 @@ dropZone.addEventListener("drop", (e) => {
 function resize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(
+    Math.max(0.4, Math.min(window.devicePixelRatio || 1, 1.5) * (settings.renderScale || 1)),
+  );
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   applyFraming();
 }
@@ -683,6 +696,7 @@ let fpsFrames = 0;
 let fpsTime = 0;
 let lastRender = 0;
 let lastStatus = 0;
+let lastTrack = 0;
 
 function frame(now) {
   requestAnimationFrame(frame);
@@ -701,7 +715,11 @@ function frame(now) {
   for (const key of KEYS) tmpTarget[key] = 0;
 
   if (face.running) {
-    face.sample(now);
+    const trackMs = 1000 / Math.max(5, Number(settings.trackHz) || 30);
+    if (now - lastTrack >= trackMs) {
+      lastTrack = now;
+      face.sample(now);
+    }
     if (face.hasFace) {
       faceSeen = true;
       const exp = face.computeExpressions(camMouth ? "both" : "mic");

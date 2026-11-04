@@ -9,6 +9,8 @@ export const defaults = {
   sens: 1,
   smooth: 0.42,
   fpsCap: 60,
+  renderScale: 1,
+  trackHz: 30,
   mouthSrc: "both",
   micGain: 1,
   autoBlink: true,

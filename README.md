@@ -42,6 +42,8 @@ OBS punya storage browser sendiri, jadi dulu avatar/setelan tidak ikut. Sekarang
 
 Kalau OBS dibuat sebelum update ini, reload source-nya sekali (**klik kanan → Refresh**).
 
+Mau render di PC dan merekam di laptop lain? Lihat [docs/NDI.md](docs/NDI.md).
+
 Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan background green.
 
 ## Fitur
@@ -94,6 +96,7 @@ src/face.js       MediaPipe face tracking -> ekspresi VRM
 src/audio.js      lip sync dari mic
 src/placeholder.js avatar dummy sebelum VRM dimuat
 serve.mjs         static server + penyimpanan setelan/avatar (data/)
+docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
 ```
 
 ## Lisensi
