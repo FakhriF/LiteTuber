@@ -19,6 +19,7 @@ let pushTimer = 0;
 let polling = false;
 let lastPoll = 0;
 let avatarBusy = false;
+let serverStateEtag = "";
 if (params.get("ui") === "0") settings.panelHidden = true;
 if (params.get("bg")) settings.bg = params.get("bg");
 
@@ -176,7 +177,14 @@ async function serverJson(pathname, options) {
 
 async function getServerState() {
   try {
-    return await serverJson("/api/state");
+    const res = await fetch("/api/state", {
+      cache: "no-store",
+      headers: serverStateEtag ? { "if-none-match": serverStateEtag } : {},
+    });
+    if (res.status === 304) return null;
+    if (!res.ok) return null;
+    serverStateEtag = res.headers.get("etag") || "";
+    return await res.json();
   } catch {
     return null;
   }

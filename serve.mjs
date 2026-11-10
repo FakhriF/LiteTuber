@@ -4,6 +4,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectVrm } from "./src/vrm.js";
+import { etagMatches, makeEtag } from "./src/http-cache.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "dist");
@@ -58,11 +59,12 @@ const MIME = {
   ".vrm": "application/octet-stream",
 };
 
-function sendJson(res, code, payload) {
+function sendJson(res, code, payload, headers = {}) {
   const body = JSON.stringify(payload);
   res.writeHead(code, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
+    ...headers,
   });
   res.end(body);
 }
@@ -147,6 +149,33 @@ async function readState() {
   }
 }
 
+// Serializes read-modify-write so two quick settings saves cannot interleave.
+// Writes go through a temp file and rename, so readers never see half a file.
+let stateQueue = Promise.resolve();
+let dataRevision = 0;
+function updateState(mutate) {
+  const run = stateQueue.then(async () => {
+    const state = await readState();
+    const next = (await mutate(state)) || state;
+    const tmp = `${statePath}.${process.pid}.tmp`;
+    await fsp.writeFile(tmp, JSON.stringify(next, null, 2));
+    await fsp.rename(tmp, statePath);
+    dataRevision++;
+    return next;
+  });
+  stateQueue = run.catch(() => {});
+  return run;
+}
+
+// Atomic write for small JSON files. Bumping the revision makes the state ETag
+// change even when two writes land in the same millisecond at the same size.
+async function writeDataFile(file, data) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  await fsp.writeFile(tmp, data);
+  await fsp.rename(tmp, file);
+  dataRevision++;
+}
+
 async function statInfo(file) {
   try {
     const st = await fsp.stat(file);
@@ -158,27 +187,42 @@ async function statInfo(file) {
 
 async function handleApi(req, res, pathname, query) {
   if (pathname === "/api/state" && req.method === "GET") {
-    const state = await readState();
     const avatar = await statInfo(avatarPath);
     const bg = await statInfo(bgPath);
-    sendJson(res, 200, {
-      settings: state.settings || null,
-      avatarName: state.avatarName || "",
-      avatarExists: avatar.exists,
-      avatarMtime: avatar.mtime,
-      bgExists: bg.exists,
-      bgMtime: bg.mtime,
-    });
+    const stateInfo = await statInfo(statePath);
+    const etag = makeEtag(dataRevision, stateInfo, avatar, bg);
+
+    if (etagMatches(req.headers["if-none-match"], etag)) {
+      res.writeHead(304, { etag, "cache-control": "no-store" });
+      res.end();
+      return true;
+    }
+
+    const state = await readState();
+    sendJson(
+      res,
+      200,
+      {
+        settings: state.settings || null,
+        avatarName: state.avatarName || "",
+        avatarExists: avatar.exists,
+        avatarMtime: avatar.mtime,
+        bgExists: bg.exists,
+        bgMtime: bg.mtime,
+      },
+      { etag },
+    );
     return true;
   }
 
   if (pathname === "/api/state" && req.method === "PUT") {
     try {
       const body = JSON.parse((await readBody(req, 1024 * 1024)).toString("utf8"));
-      const state = await readState();
-      if (body.settings && typeof body.settings === "object") state.settings = body.settings;
-      if (typeof body.avatarName === "string") state.avatarName = body.avatarName;
-      await fsp.writeFile(statePath, JSON.stringify(state, null, 2));
+      await updateState((state) => {
+        if (body.settings && typeof body.settings === "object") state.settings = body.settings;
+        if (typeof body.avatarName === "string") state.avatarName = body.avatarName;
+        return state;
+      });
       sendJson(res, 200, { ok: true });
     } catch (err) {
       sendJson(res, err.code === 413 ? 413 : 400, { error: String(err.message || err) });
@@ -204,10 +248,11 @@ async function handleApi(req, res, pathname, query) {
   if (pathname === "/api/avatar" && req.method === "PUT") {
     try {
       await writeFileLimited(req, avatarPath, 300 * 1024 * 1024, inspectVrm);
-      const state = await readState();
-      state.avatarName = query.get("name") || "avatar";
-      await fsp.writeFile(statePath, JSON.stringify(state, null, 2));
-      sendJson(res, 200, { ok: true, name: state.avatarName });
+      await updateState((state) => {
+        state.avatarName = query.get("name") || "avatar";
+        return state;
+      });
+      sendJson(res, 200, { ok: true, name: query.get("name") || "avatar" });
     } catch (err) {
       const code = err.code === 413 || err.code === 415 ? err.code : 500;
       sendJson(res, code, { error: String(err.message || err) });
@@ -217,9 +262,10 @@ async function handleApi(req, res, pathname, query) {
 
   if (pathname === "/api/avatar" && req.method === "DELETE") {
     await fsp.rm(avatarPath, { force: true });
-    const state = await readState();
-    state.avatarName = "";
-    await fsp.writeFile(statePath, JSON.stringify(state, null, 2));
+    await updateState((state) => {
+      state.avatarName = "";
+      return state;
+    });
     sendJson(res, 200, { ok: true });
     return true;
   }
@@ -239,7 +285,7 @@ async function handleApi(req, res, pathname, query) {
       const raw = await readBody(req, 25 * 1024 * 1024);
       const parsed = JSON.parse(raw.toString("utf8"));
       if (typeof parsed.dataUrl !== "string") throw new Error("dataUrl required");
-      await fsp.writeFile(bgPath, JSON.stringify({ dataUrl: parsed.dataUrl }));
+      await writeDataFile(bgPath, JSON.stringify({ dataUrl: parsed.dataUrl }));
       sendJson(res, 200, { ok: true });
     } catch (err) {
       sendJson(res, err.code === 413 ? 413 : 400, { error: String(err.message || err) });
@@ -249,6 +295,7 @@ async function handleApi(req, res, pathname, query) {
 
   if (pathname === "/api/background" && req.method === "DELETE") {
     await fsp.rm(bgPath, { force: true });
+    dataRevision++;
     sendJson(res, 200, { ok: true });
     return true;
   }
