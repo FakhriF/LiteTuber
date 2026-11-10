@@ -11,4 +11,9 @@ export default defineConfig({
     outDir: "dist",
     assetsInlineLimit: 0,
   },
+  // MediaPipe's WASM glue calls importScripts, so the tracker worker must be a
+  // classic worker. Vite emits workers as IIFE with this setting.
+  worker: {
+    format: "iife",
+  },
 });

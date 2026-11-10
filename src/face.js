@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import FaceWorker from "./face-worker.js?worker";
 
 const WASM_PATH = "/wasm";
 const MODEL_PATH = "/models/face_landmarker.task";
@@ -27,10 +28,90 @@ export class FaceTracker {
     this.confidence = 0;
     this.detectMs = 0;
     this.error = null;
-    this.delegate = new URLSearchParams(location.search).get("delegate") === "cpu" ? "CPU" : "GPU";
+    const params = new URLSearchParams(location.search);
+    this.delegate = params.get("delegate") === "cpu" ? "CPU" : "GPU";
+    // "main" until a worker proves it can start; "worker" afterwards.
+    this.mode = "main";
+    this.worker = null;
+    this.workerReady = false;
+    this.workerDisabled = params.get("worker") === "0";
+    this.busy = false;
+    this.busyAt = 0;
+    this.frameId = 0;
   }
 
   async ensureLandmarker() {
+    if (this.workerReady || this.landmarker) return;
+    if (!this.workerDisabled && (await this.startWorker())) return;
+    await this.startMainThread();
+  }
+
+  startWorker() {
+    if (typeof Worker === "undefined" || typeof createImageBitmap !== "function") {
+      return Promise.resolve(false);
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      let worker;
+      const finish = (ok) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(ok);
+      };
+      const timer = setTimeout(() => {
+        try {
+          worker?.terminate();
+        } catch {
+          /* ignore */
+        }
+        finish(false);
+      }, 12000);
+
+      try {
+        worker = new FaceWorker();
+      } catch {
+        finish(false);
+        return;
+      }
+
+      worker.onmessage = (e) => {
+        const msg = e.data;
+        if (msg.type === "ready") {
+          this.worker = worker;
+          this.workerReady = true;
+          this.mode = "worker";
+          worker.onmessage = (ev) => this.onWorkerMessage(ev);
+          finish(true);
+        } else if (msg.type === "error") {
+          try {
+            worker.terminate();
+          } catch {
+            /* ignore */
+          }
+          finish(false);
+        }
+      };
+      worker.onerror = () => {
+        try {
+          worker.terminate();
+        } catch {
+          /* ignore */
+        }
+        finish(false);
+      };
+      worker.postMessage({
+        type: "init",
+        wasmPath: WASM_PATH,
+        modelPath: MODEL_PATH,
+        delegate: this.delegate,
+      });
+    });
+  }
+
+  async startMainThread() {
+    this.mode = "main";
+    this.workerReady = false;
     if (this.landmarker) return;
     const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
     const options = {
@@ -55,6 +136,62 @@ export class FaceTracker {
       options.baseOptions.delegate = this.delegate === "GPU" ? "CPU" : "GPU";
       this.landmarker = await FaceLandmarker.createFromOptions(fileset, options);
     }
+  }
+
+  onWorkerMessage(e) {
+    const msg = e.data;
+    if (msg.type !== "result") return;
+    this.busy = false;
+    if (typeof msg.ms === "number") this.detectMs = msg.ms;
+
+    if (!msg.shapes || msg.shapes.length === 0) {
+      this.hasFace = false;
+      this.confidence = 0;
+      return;
+    }
+
+    this.hasFace = true;
+    this.blend.clear();
+    let conf = 0;
+    for (const [name, score] of msg.shapes) {
+      this.blend.set(name, score);
+      if (name === "jawOpen" || name === "eyeBlinkLeft") conf = Math.max(conf, score);
+    }
+    this.confidence = conf;
+
+    if (msg.matrix) {
+      _m.fromArray(msg.matrix);
+      this.rawQuat.setFromRotationMatrix(_m);
+      if (!this.calibrated) {
+        this.neutral.copy(this.rawQuat);
+        this.calibrated = true;
+      }
+    }
+  }
+
+  queueFrame(now) {
+    if (this.busy) {
+      // Never wedge the pipeline if a result goes missing.
+      if (now - this.busyAt < 1500) return;
+      this.busy = false;
+    }
+    this.busy = true;
+    this.busyAt = now;
+    createImageBitmap(this.video)
+      .then((bitmap) => {
+        if (!this.workerReady || !this.worker) {
+          bitmap.close();
+          this.busy = false;
+          return;
+        }
+        this.worker.postMessage(
+          { type: "frame", id: ++this.frameId, ts: now, bitmap },
+          [bitmap],
+        );
+      })
+      .catch(() => {
+        this.busy = false;
+      });
   }
 
   async openCamera(deviceId, videoEl) {
@@ -97,6 +234,7 @@ export class FaceTracker {
   stop() {
     this.running = false;
     this.hasFace = false;
+    this.busy = false;
     if (this.stream) {
       for (const track of this.stream.getTracks()) track.stop();
       this.stream = null;
@@ -112,10 +250,18 @@ export class FaceTracker {
   }
 
   sample(now) {
-    if (!this.running || !this.landmarker || !this.video || this.video.readyState < 2) {
+    if (!this.running || !this.video || this.video.readyState < 2) {
       if (this.running && this.video && this.video.paused) this.video.play().catch(() => {});
       return null;
     }
+
+    if (this.mode === "worker" && this.workerReady) {
+      this.queueFrame(now);
+      return this.expressions;
+    }
+
+    if (!this.landmarker) return null;
+
     let ts = now;
     if (ts <= this.lastTs) ts = this.lastTs + 1;
     this.lastTs = ts;
@@ -219,6 +365,18 @@ export class FaceTracker {
   }
 
   resetModel() {
+    this.busy = false;
+    this.frameId = 0;
+    if (this.worker) {
+      try {
+        this.worker.terminate();
+      } catch {
+        /* ignore */
+      }
+      this.worker = null;
+      this.workerReady = false;
+      this.mode = "main";
+    }
     if (this.landmarker) {
       try {
         this.landmarker.close();
