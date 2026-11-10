@@ -42,6 +42,8 @@ OBS punya storage browser sendiri, jadi dulu avatar/setelan tidak ikut. Sekarang
 
 Source OBS itu **tampilan saja**, bukan panel kedua. Gerakan kepala, kedip, dan mulut dikirim live dari panel browser lewat relay lokal (`/ws/pose`), jadi OBS tidak perlu kamera sendiri dan tidak perlu diatur dari dalam OBS. Atur semuanya di panel browser.
 
+Badge **OBS off / OBS 1** di tab **Tampilan** menunjukkan berapa source OBS yang sedang menerima gerakan. Kalau angkanya 0 padahal OBS sudah dibuka, reload source OBS sekali.
+
 Kalau OBS dibuat sebelum update ini, reload source-nya sekali (**klik kanan → Refresh**).
 
 Mau render di PC dan merekam di laptop lain? Lihat [docs/NDI.md](docs/NDI.md).

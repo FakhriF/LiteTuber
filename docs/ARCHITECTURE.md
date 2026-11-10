@@ -80,6 +80,7 @@ Rencana desktop memakai Tauri, tetapi jendelanya tetap membuka `http://127.0.0.1
 - State dibandingkan lewat ETag dari revisi tulis + mtime/size, bukan `JSON.stringify` tiap poll. Jangan menambah polling lebih cepat sebagai pengganti versi.
 - Tulis file selalu atomik (`.part` lalu `rename`). Jangan menulis langsung ke `avatar.vrm` atau `state.json`.
 - Pose live **tidak** lewat state/poll. Panel mengirim `{w, head}` ke `/ws/pose` ±33 Hz, dan server hanya meneruskan ke viewer `?ui=0`. Jangan menulis pose ke `data/`; itu data sesi, bukan setelan.
+- Server mengirim `{t:"status", viewers}` ke panel setiap viewer masuk/keluar. Panel memakainya hanya untuk badge OBS; status ini bukan state yang disimpan.
 
 ### 4. Upload divalidasi sebelum dipakai
 
