@@ -12,6 +12,32 @@ const avatarPath = path.join(dataDir, "avatar.vrm");
 const bgPath = path.join(dataDir, "background.json");
 const port = Number(process.env.PORT || 8770);
 
+// The server is local-only, but any website open in the same browser can still
+// reach 127.0.0.1. Lock the Host header (DNS rebinding) and reflect only
+// origins that belong to this server.
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
+function hostAllowed(req) {
+  try {
+    return LOCAL_HOSTS.has(new URL(`http://${req.headers.host || ""}`).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function originAllowed(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try {
+    const u = new URL(origin);
+    const expected = Number(u.port || (u.protocol === "https:" ? 443 : 80));
+    return LOCAL_HOSTS.has(u.hostname) && expected === port;
+  } catch {
+    return false;
+  }
+}
+
+
 fs.mkdirSync(dataDir, { recursive: true });
 
 const MIME = {
@@ -36,7 +62,6 @@ function sendJson(res, code, payload) {
   res.writeHead(code, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
-    "access-control-allow-origin": "*",
   });
   res.end(body);
 }
@@ -57,6 +82,35 @@ function readBody(req, limit) {
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+// Streams straight to disk so a large VRM never sits fully in memory.
+async function writeFileLimited(req, file, limit) {
+  const tmp = `${file}.part`;
+  const out = fs.createWriteStream(tmp);
+  let size = 0;
+  try {
+    for await (const chunk of req) {
+      size += chunk.length;
+      if (size > limit) throw Object.assign(new Error("too large"), { code: 413 });
+      if (!out.write(chunk)) {
+        await new Promise((resolve, reject) => {
+          out.once("drain", resolve);
+          out.once("error", reject);
+        });
+      }
+    }
+    await new Promise((resolve, reject) => {
+      out.once("error", reject);
+      out.end(resolve);
+    });
+    await fsp.rename(tmp, file);
+    return size;
+  } catch (err) {
+    out.destroy();
+    await fsp.rm(tmp, { force: true });
+    throw err;
+  }
 }
 
 async function readState() {
@@ -117,7 +171,6 @@ async function handleApi(req, res, pathname, query) {
       "content-type": "application/octet-stream",
       "content-length": info.size,
       "cache-control": "no-store",
-      "access-control-allow-origin": "*",
     });
     fs.createReadStream(avatarPath).pipe(res);
     return true;
@@ -125,8 +178,7 @@ async function handleApi(req, res, pathname, query) {
 
   if (pathname === "/api/avatar" && req.method === "PUT") {
     try {
-      const buffer = await readBody(req, 300 * 1024 * 1024);
-      await fsp.writeFile(avatarPath, buffer);
+      await writeFileLimited(req, avatarPath, 300 * 1024 * 1024);
       const state = await readState();
       state.avatarName = query.get("name") || "avatar";
       await fsp.writeFile(statePath, JSON.stringify(state, null, 2));
@@ -180,6 +232,31 @@ async function handleApi(req, res, pathname, query) {
 }
 
 const server = http.createServer(async (req, res) => {
+  if (!hostAllowed(req)) {
+    res.writeHead(403, { "content-type": "text/plain" });
+    res.end("forbidden host");
+    return;
+  }
+  const origin = req.headers.origin;
+  if (origin && !originAllowed(req)) {
+    res.writeHead(403, { "content-type": "text/plain" });
+    res.end("forbidden origin");
+    return;
+  }
+  if (origin) {
+    res.setHeader("access-control-allow-origin", origin);
+    res.setHeader("vary", "Origin");
+  }
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "access-control-allow-methods": "GET,PUT,DELETE,OPTIONS",
+      "access-control-allow-headers": "content-type",
+      "access-control-max-age": "600",
+    });
+    res.end();
+    return;
+  }
+
   const parsed = new URL(req.url, "http://localhost");
   const pathname = decodeURIComponent(parsed.pathname);
 
@@ -211,7 +288,6 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, {
       "content-type": MIME[ext] || "application/octet-stream",
       "cache-control": ext === ".html" ? "no-store" : "public, max-age=3600",
-      "access-control-allow-origin": "*",
     });
     fs.createReadStream(filePath).pipe(res);
   });

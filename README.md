@@ -55,6 +55,7 @@ Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan backgrou
 - **Animasi idle**: napas, goyang badan, ayunan tangan (biar tidak kaku).
 - **Pose A**: model VRM T-pose otomatis diturunkan tangannya.
 - **Kalibrasi**: simpan posisi netral kepala biar tidak miring terus.
+- **Kualitas otomatis**: kalau FPS turun, resolusi render dan rate tracking diturunkan bertahap, lalu dikembalikan saat sudah lancar. Bisa dimatikan di panel.
 - **Fitur ala carte**: gerak kepala, gerak mata, kedip, ekspresi wajah, animasi idle, dan fisika rambut bisa dimatikan satu-satu.
 
 ## Shortcut
@@ -67,6 +68,7 @@ Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan backgrou
 
 ## Tips buat laptop lemah
 
+- Biarkan **Kualitas otomatis** aktif — dia menurunkan resolusi/tracking sendiri saat berat.
 - Set **Batas FPS** ke `30`.
 - Pakai framing **Kepala & bahu** (model yang dirender lebih sedikit).
 - Kalau tracking terasa berat/aneh, coba `http://127.0.0.1:8770/?delegate=cpu` (pakai CPU, lebih lambat tapi lebih kompatibel).
@@ -101,4 +103,4 @@ docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
 
 ## Lisensi
 
-MIT. Model contoh tidak disertakan.
+MIT — lihat [LICENSE](LICENSE). Model contoh tidak disertakan.
