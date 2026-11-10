@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "start": "vite build && node serve.mjs",
-    "serve": "node serve.mjs"
+    "serve": "node serve.mjs",
+    "test": "vitest run"
   },
   "keywords": [],
   "type": "module",
@@ -16,5 +17,8 @@
     "three": "^0.187.0",
     "vite": "^8.3.5"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "vitest": "^5.1.0"
+  }
 }
