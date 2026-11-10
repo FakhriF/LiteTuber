@@ -115,6 +115,7 @@ src/placeholder.js avatar dummy sebelum VRM dimuat
 serve.mjs         static server + penyimpanan setelan/avatar (data/)
 test/             Vitest: validator VRM, vowelWeights, merge setelan
 docs/ARCHITECTURE.md  alur data, invariant, batasan
+docs/CI-WINDOWS.md strategi build Windows + GitHub Actions
 docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
 ```
 
@@ -127,6 +128,8 @@ npm run serve   # jalankan server tanpa build ulang
 ```
 
 CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22.
+
+Build installer Windows dan strategi CI Tauri ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md). PC Windows tidak perlu dipakai untuk CI; cukup untuk smoke test installer.
 
 ## Lisensi
 
