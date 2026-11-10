@@ -14,6 +14,7 @@ export class PoseSync {
     this.role = role === "viewer" ? "viewer" : "panel";
     this.onPose = handlers.onPose || null;
     this.onStatus = handlers.onStatus || null;
+    this.onPeers = handlers.onPeers || null;
     this.ws = null;
     this.retry = 0;
     this.stopped = false;
@@ -21,6 +22,7 @@ export class PoseSync {
     this.lastSend = 0;
     this.lastPoseAt = 0;
     this.status = "off";
+    this.viewers = 0;
   }
 
   get connected() {
@@ -63,14 +65,19 @@ export class PoseSync {
     });
 
     ws.addEventListener("message", (event) => {
-      if (this.role !== "viewer") return;
       let msg;
       try {
         msg = JSON.parse(event.data);
       } catch {
         return;
       }
-      if (!msg || msg.t !== "pose") return;
+      if (!msg || typeof msg !== "object") return;
+      if (msg.t === "status") {
+        this.viewers = Number.isFinite(msg.viewers) ? msg.viewers : 0;
+        this.onPeers?.(this.viewers);
+        return;
+      }
+      if (this.role !== "viewer" || msg.t !== "pose") return;
       const w = msg.w && typeof msg.w === "object" ? msg.w : null;
       const head = Array.isArray(msg.head) && msg.head.length === 4 ? msg.head : null;
       if (!w && !head) return;
@@ -81,6 +88,8 @@ export class PoseSync {
     const lost = () => {
       if (this.ws !== ws) return;
       this.ws = null;
+      this.viewers = 0;
+      this.onPeers?.(0);
       this.setStatus("off");
       this.scheduleRetry();
     };

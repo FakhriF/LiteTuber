@@ -21,6 +21,12 @@ const poseSync = new PoseSync(viewer ? "viewer" : "panel", {
   onPose: (pose) => {
     remotePose = pose;
   },
+  onPeers: (count) => {
+    const badge = $("obsBadge");
+    if (!badge) return;
+    badge.textContent = count > 0 ? `OBS ${count}` : "OBS off";
+    badge.classList.toggle("on", count > 0);
+  },
 });
 let applyingServer = false;
 let serverAvatarMtime = 0;

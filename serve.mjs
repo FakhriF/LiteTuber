@@ -383,12 +383,24 @@ function wsSend(ws, payload) {
   }
 }
 
+// The panel shows whether any OBS source is actually listening, so the user
+// does not have to guess whether the relay is alive.
+function notifyPanels() {
+  const message = JSON.stringify({
+    t: "status",
+    viewers: viewers.size,
+    panels: panels.size,
+  });
+  for (const panel of panels) wsSend(panel, message);
+}
+
 wss.on("connection", (ws, req, role) => {
   ws.isAlive = true;
   ws.role = role;
   ws.rateWindow = 0;
   ws.rateCount = 0;
   (role === "panel" ? panels : viewers).add(ws);
+  notifyPanels();
 
   ws.on("pong", () => {
     ws.isAlive = true;
@@ -421,6 +433,7 @@ wss.on("connection", (ws, req, role) => {
   const drop = () => {
     panels.delete(ws);
     viewers.delete(ws);
+    notifyPanels();
   };
   ws.on("close", drop);
   ws.on("error", drop);
