@@ -56,6 +56,7 @@ Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan backgrou
 - **Pose A**: model VRM T-pose otomatis diturunkan tangannya.
 - **Kalibrasi**: simpan posisi netral kepala biar tidak miring terus.
 - **Kualitas otomatis**: kalau FPS turun, resolusi render dan rate tracking diturunkan bertahap, lalu dikembalikan saat sudah lancar. Bisa dimatikan di panel.
+- **Upload avatar aman**: file diperiksa sebagai VRM sebelum dimuat/dikirim, progres upload terlihat, dan avatar lama tidak rusak kalau upload gagal.
 - **Fitur ala carte**: gerak kepala, gerak mata, kedip, ekspresi wajah, animasi idle, dan fisika rambut bisa dimatikan satu-satu.
 
 ## Shortcut
@@ -81,7 +82,7 @@ Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan backgrou
 Pastikan tidak ada aplikasi lain yang memakai webcam. Cek izin kamera di browser (ikon gembok di address bar). Kalau wajah tidak terdeteksi, coba cahaya lebih terang dan jarak ±50 cm.
 
 **Model tidak bisa dimuat**
-Pastikan file benar-benar `.vrm` (bukan `.vrm` yang di-rename). Model VRM 0.x dan 1.0 didukung.
+Pastikan file benar-benar `.vrm` (bukan `.vrm` yang di-rename). Model VRM 0.x dan 1.0 didukung. App dan server sama-sama memeriksa header file sebelum dipakai, jadi file yang salah ditolak lebih awal dan avatar lama tidak rusak.
 
 **Panel ikut kerekam di OBS**
 Pakai `?ui=0` di URL browser source.
@@ -98,11 +99,24 @@ src/avatar.js     loader VRM, pose idle, ekspresi
 src/face.js       MediaPipe face tracking -> ekspresi VRM
 src/face-worker.js tracking di Web Worker (fallback ke main thread)
 src/audio.js      lip sync dari mic
+src/vrm.js        validasi header GLB/VRM (dipakai klien + server)
 src/placeholder.js avatar dummy sebelum VRM dimuat
 serve.mjs         static server + penyimpanan setelan/avatar (data/)
+test/             Vitest: validator VRM, vowelWeights, merge setelan
+docs/ARCHITECTURE.md  alur data, invariant, batasan
 docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
 ```
 
+## Development
+
+```bash
+npm test        # Vitest
+npm run build   # produksi ke dist/
+npm run serve   # jalankan server tanpa build ulang
+```
+
+CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22.
+
 ## Lisensi
 
-MIT — lihat [LICENSE](LICENSE). Model contoh tidak disertakan.
+MIT — lihat [LICENSE](LICENSE). Model contoh tidak disertakan. Lisensi dependensi ada di [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
