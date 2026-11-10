@@ -116,6 +116,43 @@ body.dark {
   color: transparent;
 }
 
+/* Compact category tabs, styled like the tabs above a notebook page. */
+.tabs {
+  display: flex;
+  gap: 3px;
+  padding: 7px 8px 0;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.tabs button {
+  flex: 1;
+  padding: 6px 3px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tabs button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.tabs button.on {
+  color: var(--text);
+  background: rgba(124, 156, 255, 0.14);
+  border-color: var(--line);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
 .badge {
   font-variant-numeric: tabular-nums;
   font-size: 11px;
@@ -176,6 +213,25 @@ button:hover,
 select:hover {
   background: rgba(255, 255, 255, 0.11);
   border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Native dropdown popups ignore the page palette. `color-scheme: dark` makes
+   Chromium/WebView2 draw a dark list, and the explicit option colours cover
+   browsers that still use the OS default white background. */
+select {
+  color-scheme: dark;
+  background-color: #12151c;
+  color: var(--text);
+}
+
+select option {
+  background-color: #12151c;
+  color: var(--text);
+}
+
+select option:checked {
+  background-color: #26304a;
+  color: #fff;
 }
 
 button:active {

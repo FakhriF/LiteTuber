@@ -26,8 +26,15 @@
         <button id="hideBtn" class="icon" title="Sembunyikan panel (H)">–</button>
       </header>
 
+      <nav class="tabs" role="tablist" aria-label="Kategori pengaturan">
+        <button type="button" data-tab="avatar" class="on">Avatar</button>
+        <button type="button" data-tab="face">Wajah</button>
+        <button type="button" data-tab="mouth">Mulut</button>
+        <button type="button" data-tab="display">Tampilan</button>
+      </nav>
+
       <div class="body">
-        <section>
+        <section data-tab="avatar">
           <h3>Avatar</h3>
           <div class="row">
             <button id="pickVrm" class="primary grow">Pilih .vrm</button>
@@ -37,7 +44,7 @@
           <p id="vrmName" class="muted">belum ada avatar</p>
         </section>
 
-        <section>
+        <section data-tab="face">
           <h3>Tracking wajah</h3>
           <div class="row">
             <button id="camBtn" class="grow">Aktifkan kamera</button>
@@ -76,7 +83,7 @@
           </details>
         </section>
 
-        <section>
+        <section data-tab="mouth">
           <h3>Mulut</h3>
           <div class="row">
             <button id="micBtn" class="grow">Aktifkan mic</button>
@@ -105,7 +112,7 @@
           <label class="check"><input id="autoBlink" type="checkbox" checked /> Kedip otomatis</label>
         </section>
 
-        <section>
+        <section data-tab="face">
           <h3>Fitur</h3>
           <div class="row toggles">
             <label class="check"><input id="useHead" type="checkbox" checked /> Gerak kepala</label>
@@ -118,7 +125,7 @@
           <p class="muted small">Matikan yang tidak perlu buat menghemat CPU/GPU.</p>
         </section>
 
-        <section>
+        <section data-tab="display">
           <h3>Latar</h3>
           <div class="chips" id="bgChips">
             <button data-bg="transparent">Transparan</button>
@@ -129,7 +136,7 @@
           <input type="file" id="bgFile" accept="image/*" hidden />
         </section>
 
-        <section>
+        <section data-tab="display">
           <h3>Layar</h3>
           <label class="select">
             <span>Framing</span>
@@ -178,7 +185,7 @@
           <div class="row">
             <button id="obsBtn" class="grow">Salin URL untuk OBS</button>
           </div>
-          <p class="muted small">OBS → Sources → + → Browser → tempel URL, ukuran 1920×1080.</p>
+          <p class="muted small">OBS cuma menampilkan. Atur semua di panel browser; gerakan live ikut panel lewat relay lokal. Ukuran source 1920×1080.</p>
         </section>
 
       </div>
