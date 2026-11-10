@@ -3,6 +3,7 @@ import { VrmAvatar } from "./avatar.js";
 import { PlaceholderAvatar } from "./placeholder.js";
 import { FaceTracker } from "./face.js";
 import { MicMouth } from "./audio.js";
+import { PoseSync } from "./pose-sync.js";
 import { inspectVrm } from "./vrm.js";
 import * as store from "./store.js";
 
@@ -12,6 +13,15 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const params = new URLSearchParams(location.search);
 const settings = store.loadSettings();
 const forcedBg = params.get("bg");
+// OBS uses the same page with ?ui=0. That instance is display-only and mirrors
+// the panel's live pose instead of creating its own settings/camera session.
+const viewer = params.get("ui") === "0";
+let remotePose = null;
+const poseSync = new PoseSync(viewer ? "viewer" : "panel", {
+  onPose: (pose) => {
+    remotePose = pose;
+  },
+});
 let applyingServer = false;
 let serverAvatarMtime = 0;
 let serverBgMtime = 0;
@@ -100,6 +110,8 @@ const mic = new MicMouth();
 const smoothW = {};
 const KEYS = [
   "blink",
+  "blinkLeft",
+  "blinkRight",
   "aa",
   "oh",
   "ee",
@@ -332,6 +344,33 @@ function applyPanel() {
   $("panel").classList.toggle("hidden", settings.panelHidden);
   $("hideBtn").textContent = settings.panelHidden ? "+" : "–";
   updateCamPreview();
+}
+
+function applyTab(tab) {
+  for (const btn of document.querySelectorAll(".tabs button")) {
+    btn.classList.toggle("on", btn.dataset.tab === tab);
+  }
+  for (const section of document.querySelectorAll("#panel .body section")) {
+    section.hidden = section.dataset.tab !== tab;
+  }
+}
+
+let activeTab = "avatar";
+try {
+  activeTab = localStorage.getItem("litetuber.tab") || "avatar";
+} catch {
+  /* private mode: keep the default */
+}
+for (const btn of document.querySelectorAll(".tabs button")) {
+  btn.addEventListener("click", () => {
+    activeTab = btn.dataset.tab;
+    try {
+      localStorage.setItem("litetuber.tab", activeTab);
+    } catch {
+      /* ignore */
+    }
+    applyTab(activeTab);
+  });
 }
 
 async function setBackgroundImageFromStore() {
@@ -720,7 +759,7 @@ $("obsBtn").addEventListener("click", async () => {
   const url = `${location.origin}${location.pathname}?ui=0`;
   try {
     await navigator.clipboard.writeText(url);
-    toast(`URL disalin: ${url}`);
+    toast(`URL OBS disalin (mode tampilan): ${url}`, 3200);
   } catch {
     toast(url, 6000);
   }
@@ -897,7 +936,8 @@ function frame(now) {
       for (const key of KEYS) {
         if (!settings.useEyes && EYE_KEYS.includes(key)) continue;
         if (!settings.useExpr && EXPR_KEYS.includes(key)) continue;
-        if (!settings.useBlink && key === "blink") continue;
+        if (!settings.useBlink && (key === "blink" || key === "blinkLeft" || key === "blinkRight"))
+          continue;
         tmpTarget[key] = exp[key] || 0;
       }
       if (settings.useHead) {
@@ -918,7 +958,13 @@ function frame(now) {
     if (m) {
       micLevel = m.level;
       if (micMouth) {
-        for (const key of MOUTH_KEYS) tmpTarget[key] = Math.max(tmpTarget[key], m[key] || 0);
+        // In "both" mode mic wins while someone is speaking: camera mouth
+        // shapes are too generic and would hide the vowel distinction.
+        const micDominant = camMouth && m.level > 0.04;
+        for (const key of MOUTH_KEYS) {
+          const value = m[key] || 0;
+          tmpTarget[key] = micDominant ? value : Math.max(tmpTarget[key], value);
+        }
       }
     }
   }
@@ -932,22 +978,39 @@ function frame(now) {
 
   uiMeter(now);
 
-  if (!faceSeen && settings.autoBlink) {
+  // A viewer mirrors the panel's already-smoothed values. Applying smoothing
+  // again would add visible lag and soften the panel's expressions.
+  const remote = viewer && remotePose && poseSync.fresh;
+
+  if (!faceSeen && settings.autoBlink && !remote) {
     tmpTarget.blink = Math.max(tmpTarget.blink, updateAutoBlink(dt));
   }
 
-  const attack = 1 - Math.exp(-dt / 0.045);
-  const release = 1 - Math.exp(-dt / 0.11);
-  for (const key of KEYS) {
-    const target = tmpTarget[key] || 0;
-    const k = target > smoothW[key] ? attack : release;
-    smoothW[key] += (target - smoothW[key]) * k;
+  if (remote) {
+    for (const key of KEYS) {
+      const value = Number(remotePose.w?.[key]);
+      smoothW[key] = Number.isFinite(value) ? clamp(value, 0, 1) : 0;
+    }
+    const head = remotePose.head;
+    if (Array.isArray(head) && head.every((n) => Number.isFinite(n))) {
+      smoothHead.fromArray(head);
+    }
+  } else {
+    const attack = 1 - Math.exp(-dt / 0.045);
+    const release = 1 - Math.exp(-dt / 0.11);
+    for (const key of KEYS) {
+      const target = tmpTarget[key] || 0;
+      const k = target > smoothW[key] ? attack : release;
+      smoothW[key] += (target - smoothW[key]) * k;
+    }
+
+    const tau = 0.015 + settings.smooth * 0.24;
+    const headK = 1 - Math.exp(-dt / tau);
+    if (faceActive) smoothHead.slerp(targetHead, headK);
+    else smoothHead.slerp(identity, headK * 0.35);
   }
 
-  const tau = 0.015 + settings.smooth * 0.24;
-  const headK = 1 - Math.exp(-dt / tau);
-  if (faceActive) smoothHead.slerp(targetHead, headK);
-  else smoothHead.slerp(identity, headK * 0.35);
+  if (!viewer) poseSync.send(smoothW, smoothHead.toArray());
 
   avatar.pose(
     now / 1000,
@@ -1024,9 +1087,11 @@ async function boot() {
   if (delegateParam) settings.delegate = delegateParam.toLowerCase() === "cpu" ? "CPU" : "GPU";
   face.delegate = settings.delegate;
   applyPanel();
+  applyTab(activeTab);
   applyBackground();
   syncUI();
   resize();
+  poseSync.connect();
   requestAnimationFrame(frame);
   refreshDevices();
 
@@ -1071,6 +1136,9 @@ window.__litetuber = {
     return renderer;
   },
   smoothW,
+  get smoothHead() {
+    return smoothHead;
+  },
   get micLevel() {
     return micLevel;
   },
@@ -1079,6 +1147,10 @@ window.__litetuber = {
   },
   get avatarBusy() {
     return avatarBusy;
+  },
+  pose: poseSync,
+  get remotePose() {
+    return remotePose;
   },
 };
 

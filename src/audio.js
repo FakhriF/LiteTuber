@@ -1,24 +1,61 @@
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-export function vowelWeights(s0, s1, s2, s3, s4, level) {
-  const bright = s3 + s4;
-  const aa = Math.max(0, s1 * 1.5 * (1 - 0.85 * bright));
-  const oh = Math.max(0, (0.75 * s0 + 0.4 * s1 + s2) * (1 - 0.65 * bright));
-  const ou = Math.max(0, (1.25 * s0 + 0.9 * s2) * (1 - 1.6 * bright));
-  const f1 = Math.min(1, s1);
-  const ih = Math.max(0, (s3 + 0.45 * s4) * (1 - 0.35 * s0) * (1 - 1.1 * f1));
-  const ee = Math.max(0, (0.7 * s3 + s4) * (1 - 0.35 * s0) * (0.3 + 2.4 * f1));
+// Typical spectral shape of each vowel across the five bands. Matching is done
+// on mean-removed vectors, so a loud/quiet voice or a different mic colour does
+// not change the classification.
+const VOWEL_TEMPLATES = {
+  aa: [0.03, 0.4, 0.45, 0.1, 0.02],
+  ih: [0.2, 0.1, 0.1, 0.35, 0.25],
+  ou: [0.42, 0.34, 0.14, 0.07, 0.03],
+  ee: [0.06, 0.22, 0.34, 0.3, 0.08],
+  oh: [0.18, 0.4, 0.32, 0.08, 0.02],
+};
 
-  const top = Math.max(aa, oh, ou, ih, ee, 1e-4);
-  const cut = top * 0.45;
-  const norm = (v) => clamp01((v - cut) / (top - cut + 1e-4));
-  return {
-    aa: clamp01(level * norm(aa)),
-    oh: clamp01(level * norm(oh)),
-    ou: clamp01(level * norm(ou)),
-    ih: clamp01(level * norm(ih)),
-    ee: clamp01(level * norm(ee) * 0.9),
-  };
+const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+const centered = (a) => {
+  const m = mean(a);
+  return a.map((v) => v - m);
+};
+const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
+
+const TEMPLATES = Object.fromEntries(
+  Object.entries(VOWEL_TEMPLATES).map(([name, shape]) => {
+    const c = centered(shape);
+    return [name, { c, norm: Math.sqrt(dot(c, c)) }];
+  }),
+);
+
+export function vowelWeights(s0, s1, s2, s3, s4, level) {
+  const bands = [s0, s1, s2, s3, s4];
+  const spread = Math.max(...bands) - Math.min(...bands);
+  if (level <= 0 || spread < 0.02) {
+    return { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };
+  }
+
+  const input = centered(bands);
+  const inputNorm = Math.sqrt(dot(input, input)) || 1;
+  const scores = {};
+  let max = -Infinity;
+  for (const [name, { c, norm }] of Object.entries(TEMPLATES)) {
+    const score = dot(input, c) / (inputNorm * norm || 1);
+    scores[name] = score;
+    if (score > max) max = score;
+  }
+
+  // Softmax keeps the winning vowel dominant while still allowing blends
+  // between neighbouring shapes during a transition.
+  const temp = 0.12;
+  const weights = {};
+  let sum = 0;
+  for (const [name, score] of Object.entries(scores)) {
+    const w = Math.exp((score - max) / temp);
+    weights[name] = w;
+    sum += w;
+  }
+  for (const name of Object.keys(weights)) {
+    weights[name] = clamp01(level * (weights[name] / sum));
+  }
+  return weights;
 }
 
 export class MicMouth {
@@ -37,12 +74,18 @@ export class MicMouth {
 
   async start(deviceId) {
     if (this.running) return;
+    // Prefer a raw signal: AGC and noise suppression flatten exactly the
+    // spectral differences the vowel matcher needs.
+    const raw = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
+    };
     const attempts = [];
-    if (deviceId) attempts.push({ audio: { deviceId: { exact: deviceId } } });
+    if (deviceId) attempts.push({ audio: { ...raw, deviceId: { exact: deviceId } } });
+    attempts.push({ audio: raw });
     attempts.push({ audio: true });
-    attempts.push({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
 
     let lastError = null;
     for (const constraints of attempts) {

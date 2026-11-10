@@ -36,4 +36,19 @@ describe("vowelWeights", () => {
     expect(w.ee).toBeGreaterThan(w.ou);
     expect(w.ih).toBeGreaterThan(w.ou);
   });
+
+  it("picks a different dominant vowel for each spectral template", () => {
+    const templates = {
+      aa: [0.03, 0.4, 0.45, 0.1, 0.02],
+      ih: [0.2, 0.1, 0.1, 0.35, 0.25],
+      ou: [0.42, 0.34, 0.14, 0.07, 0.03],
+      ee: [0.06, 0.22, 0.34, 0.3, 0.08],
+      oh: [0.18, 0.4, 0.32, 0.08, 0.02],
+    };
+    for (const [expected, bands] of Object.entries(templates)) {
+      const w = vowelWeights(...bands, 1);
+      const winner = Object.entries(w).sort((a, b) => b[1] - a[1])[0][0];
+      expect(winner).toBe(expected);
+    }
+  });
 });

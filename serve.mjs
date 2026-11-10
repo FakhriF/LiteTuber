@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { inspectVrm } from "./src/vrm.js";
 import { etagMatches, makeEtag } from "./src/http-cache.js";
+import { normalizePoseMessage } from "./src/pose-protocol.js";
+import { WebSocketServer } from "ws";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "dist");
@@ -363,6 +365,99 @@ const server = http.createServer(async (req, res) => {
       "cache-control": ext === ".html" ? "no-store" : "public, max-age=3600",
     });
     fs.createReadStream(filePath).pipe(res);
+  });
+});
+
+/* ---------- live pose relay ---------- */
+// The OBS source cannot open the panel's camera, so the panel streams its
+// smoothed pose here and every viewer mirrors it. Display only; no state write.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
+const panels = new Set();
+const viewers = new Set();
+
+function wsSend(ws, payload) {
+  try {
+    if (ws.readyState === ws.OPEN) ws.send(payload);
+  } catch {
+    /* the socket is going away */
+  }
+}
+
+wss.on("connection", (ws, req, role) => {
+  ws.isAlive = true;
+  ws.role = role;
+  ws.rateWindow = 0;
+  ws.rateCount = 0;
+  (role === "panel" ? panels : viewers).add(ws);
+
+  ws.on("pong", () => {
+    ws.isAlive = true;
+  });
+
+  ws.on("message", (data) => {
+    if (ws.role !== "panel") return;
+    // A panel should send ~33 messages per second. A broken or hostile client
+    // must not be able to spin the server or flood OBS.
+    const now = Date.now();
+    if (now - ws.rateWindow > 1000) {
+      ws.rateWindow = now;
+      ws.rateCount = 0;
+    }
+    ws.rateCount += 1;
+    if (ws.rateCount > 120) return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
+    const pose = normalizePoseMessage(parsed);
+    if (!pose) return;
+    const frame = JSON.stringify(pose);
+    for (const viewer of viewers) wsSend(viewer, frame);
+  });
+
+  const drop = () => {
+    panels.delete(ws);
+    viewers.delete(ws);
+  };
+  ws.on("close", drop);
+  ws.on("error", drop);
+});
+
+const heartbeat = setInterval(() => {
+  for (const ws of [...panels, ...viewers]) {
+    if (!ws.isAlive) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    try {
+      ws.ping();
+    } catch {
+      /* ignore */
+    }
+  }
+}, 30000);
+heartbeat.unref();
+
+server.on("upgrade", (req, socket, head) => {
+  let role = "";
+  try {
+    const url = new URL(req.url, "http://localhost");
+    if (url.pathname !== "/ws/pose") throw new Error("not a pose socket");
+    role = url.searchParams.get("role") === "viewer" ? "viewer" : "panel";
+  } catch {
+    socket.destroy();
+    return;
+  }
+  if (!hostAllowed(req) || !originAllowed(req)) {
+    socket.destroy();
+    return;
+  }
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit("connection", ws, req, role);
   });
 });
 
