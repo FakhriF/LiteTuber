@@ -1,22 +1,29 @@
 # LiteTuber
 
-Alternatif super ringan buat Warudo/VTube Studio: render avatar VRM di browser, tracking wajah dari webcam, gerak mulut dari mic, background transparan/green screen, dan langsung dipakai sebagai **OBS Browser Source**.
+Aplikasi VTuber untuk avatar VRM. Render model `.vrm` di browser, gerakkan kepala, mata, dan mulut dari webcam/mic, lalu tampilkan di OBS sebagai Browser Source.
 
-Semua berjalan lokal (tidak ada data yang dikirim ke mana-mana). Ada dua cara memakai: mode browser dan aplikasi desktop Tauri. Keduanya membuka URL yang sama, jadi OBS tidak perlu diubah.
+Fokusnya avatar VRM (VRM 0.x dan 1.0). Tidak memakai model Live2D. Semua berjalan lokal; tidak ada data yang dikirim ke mana-mana.
 
-Panduan langkah-demi-langkah: [docs/PANDUAN.md](docs/PANDUAN.md).
+Panduan lengkap: [docs/PANDUAN.md](docs/PANDUAN.md).
 
-## Kenapa ini ringan
+## Install di Windows
 
-- Mode browser tidak butuh aplikasi native, Unity, atau Electron. Cukup tab browser. Versi desktop memakai Tauri dengan WebView sistem, bukan Electron.
-- Model VRM langsung dari file `.vrm` kamu (VRM 0.x dan 1.0).
-- Tracking wajah pakai MediaPipe FaceLandmarker (WASM/GPU), ±30–60 fps, dijalankan di Web Worker supaya render tidak tersendat.
-- Render Three.js dengan MToon, resolusi bisa dibatasi dan FPS bisa dikunci 30.
-- Setelan dan avatar disimpan oleh server lokal (folder `data/`, atau app-data Tauri di mode desktop), jadi tidak perlu upload ulang dan otomatis sama di semua jendela — termasuk OBS.
+Installer belum tersedia sebagai download resmi. Kalau build dari GitHub Actions sudah ada:
 
-## Menjalankan
+1. Buka repo di GitHub, masuk **Actions → Tauri Windows**, lalu pilih run terbaru.
+2. Unduh artifact `litetuber-nsis`, ekstrak, lalu jalankan file `*-setup.exe`.
+3. Kalau muncul SmartScreen, pilih **More info → Run anyway**. Build ini belum ditandatangani.
+4. Buka **LiteTuber** dari Start Menu.
+5. Tambahkan **Browser Source** di OBS dengan URL `http://127.0.0.1:8770/?ui=0`, ukuran `1920×1080`.
 
-Butuh Node.js 18+ untuk mode browser. Kalau memakai installer desktop, Node tidak diperlukan.
+Jendela LiteTuber adalah panel pengaturan. Biarkan tetap terbuka saat OBS dipakai. Data app disimpan
+di `%APPDATA%\app.litetuber.desktop\`.
+
+Cara membuat installer lewat CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
+
+## Jalankan tanpa installer
+
+Butuh Node.js 18+.
 
 ```bash
 cd ~/Projects/vtuber-lite
@@ -24,61 +31,47 @@ npm install      # sekali saja
 npm start        # build + jalankan server
 ```
 
-Buka `http://127.0.0.1:8770/`. Setelah itu ikuti [docs/PANDUAN.md](docs/PANDUAN.md) untuk memilih
-avatar, menyalakan kamera/mic, dan memasang OBS.
+Buka `http://127.0.0.1:8770/`, pilih avatar, lalu nyalakan kamera dan mic dari panel.
 
-Kalau sudah pernah build dan cuma mau jalanin:
+Kalau sudah pernah build dan cuma mau menjalankan server:
 
 ```bash
 npm run serve
 ```
 
-## Versi desktop (Tauri)
-
-Scaffold Tauri v2 ada di `src-tauri/`. Versi desktop tetap membuka
-`http://127.0.0.1:8770/`, jadi URL OBS tidak berubah. Server, penyimpanan setelan/avatar, dan relay
-pose dipindah ke Rust supaya installer tidak butuh Node.js.
-
-```bash
-npm run build
-npm run tauri build        # installer untuk OS yang sedang dipakai
-```
-
-Installer Windows (NSIS) dibuild lewat GitHub Actions; PC gaming hanya dipakai untuk smoke test.
-Detail: [docs/DESKTOP.md](docs/DESKTOP.md) dan [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
-
 ## Pakai di OBS
 
-1. Jalankan LiteTuber: `npm start` untuk mode browser, atau buka app desktop (biarkan tetap terbuka).
+1. Jalankan LiteTuber (app desktop atau `npm start`) dan biarkan panel tetap terbuka.
 2. Di OBS: **Sources → + → Browser**.
-3. URL: `http://127.0.0.1:8770/?ui=0` (tombol **Salin URL untuk OBS** di panel juga bisa).
+3. URL: `http://127.0.0.1:8770/?ui=0`. Tombol **Salin URL untuk OBS** di panel juga bisa.
 4. Width `1920`, Height `1080`.
-5. Background transparan otomatis — tidak perlu chroma key. Kalau mau green screen, pilih **Green** di panel.
+5. Background transparan otomatis. Untuk green screen, pilih **Green** di panel.
 
-OBS punya storage browser sendiri, jadi dulu avatar/setelan tidak ikut. Sekarang semua disimpan di server (`data/` di mode browser, app-data Tauri di mode desktop), jadi source OBS otomatis memakai avatar dan setelan yang sama. Perubahan di panel (mirror, framing, background, avatar baru) ikut ter-update di OBS dalam ±3 detik tanpa reload.
+Source OBS hanya menampilkan. Gerakan dikirim dari panel lewat relay lokal, jadi OBS tidak perlu
+kamera sendiri. Badge **OBS off / OBS 1** di tab Tampilan menunjukkan apakah relay tersambung.
 
-Source OBS itu **tampilan saja**, bukan panel kedua. Gerakan kepala, kedip, dan mulut dikirim live dari panel browser lewat relay lokal (`/ws/pose`), jadi OBS tidak perlu kamera sendiri dan tidak perlu diatur dari dalam OBS. Atur semuanya di panel browser.
-
-Badge **OBS off / OBS 1** di tab **Tampilan** menunjukkan berapa source OBS yang sedang menerima gerakan. Kalau angkanya 0 padahal OBS sudah dibuka, reload source OBS sekali.
-
-Kalau OBS dibuat sebelum update ini, reload source-nya sekali (**klik kanan → Refresh**).
-
-Mau render di PC dan merekam di laptop lain? Lihat [docs/NDI.md](docs/NDI.md).
-
-Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan background green.
+Setelah update, reload source OBS sekali (**klik kanan → Refresh**). URL-nya tetap sama.
 
 ## Fitur
 
-- **Tracking wajah**: kepala (yaw/pitch/roll), kedip mata, senyum, alis, pandangan mata.
-- **Mulut**: 5 bentuk vokal (a, i, u, e, o) — dari kamera (buka mulut, monyong, lebar) dan/atau dari mic (analisis frekuensi).
-- **Latar**: transparan, green, blue, atau gambar (drag & drop gambar juga bisa).
-- **Framing**: kepala & bahu / setengah badan / seluruh badan, plus zoom.
-- **Animasi idle**: napas, goyang badan, ayunan tangan (biar tidak kaku).
-- **Pose A**: model VRM T-pose otomatis diturunkan tangannya.
-- **Kalibrasi**: simpan posisi netral kepala biar tidak miring terus.
-- **Kualitas otomatis**: kalau FPS turun, resolusi render dan rate tracking diturunkan bertahap, lalu dikembalikan saat sudah lancar. Bisa dimatikan di panel.
-- **Upload avatar aman**: file diperiksa sebagai VRM sebelum dimuat/dikirim, progres upload terlihat, dan avatar lama tidak rusak kalau upload gagal.
-- **Fitur ala carte**: gerak kepala, gerak mata, kedip, ekspresi wajah, animasi idle, dan fisika rambut bisa dimatikan satu-satu.
+- Avatar VRM 0.x dan 1.0, bisa drag & drop atau pilih file.
+- Tracking wajah: kepala, kedip, ekspresi, dan arah mata.
+- Gerak mulut dari kamera dan/atau mic, dengan 5 bentuk vokal.
+- Background transparan, green, blue, atau gambar.
+- Framing kepala–bahu, setengah badan, atau seluruh badan.
+- Animasi idle dan fisika rambut.
+- Kualitas otomatis: resolusi dan rate tracking menyesuaikan FPS.
+- Upload avatar divalidasi, dengan progres dan tanpa merusak avatar lama.
+- Pengaturan tersimpan di server lokal dan ikut terbaca oleh OBS.
+
+## Data
+
+- Mode browser: folder `data/` di repo.
+- Mode desktop: `%APPDATA%\app.litetuber.desktop\` (Windows).
+- OBS tidak menyimpan avatar sendiri; dia mengambil dari server lewat URL yang sama.
+
+Tombol `✕` di tab Avatar menghapus avatar tersimpan. Detail reset dan pindah komputer ada di
+[docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Shortcut
 
@@ -88,71 +81,40 @@ Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan backgrou
 | `R` | kalibrasi posisi netral kepala |
 | `F` | fullscreen |
 
-## Tips buat laptop lemah
-
-- Biarkan **Kualitas otomatis** aktif — dia menurunkan resolusi/tracking sendiri saat berat.
-- Set **Batas FPS** ke `30`.
-- Pakai framing **Kepala & bahu** (model yang dirender lebih sedikit).
-- Kalau tracking terasa berat/aneh, coba `http://127.0.0.1:8770/?delegate=cpu` (pakai CPU, lebih lambat tapi lebih kompatibel).
-- Kalau tracking justru bermasalah setelah update worker, coba `?worker=0` untuk kembali ke mode lama (tracking di main thread).
-- Tutup tab lain yang pakai GPU.
-
 ## Troubleshooting
 
-**Kamera tidak muncul / "wajah: tidak ada"**
-Pastikan tidak ada aplikasi lain yang memakai webcam. Cek izin kamera di browser (ikon gembok di address bar). Kalau wajah tidak terdeteksi, coba cahaya lebih terang dan jarak ±50 cm.
+**Kamera tidak muncul** — cek izin kamera di browser atau Windows, dan pastikan tidak ada app lain
+yang memakai webcam.
 
-**Model tidak bisa dimuat**
-Pastikan file benar-benar `.vrm` (bukan `.vrm` yang di-rename). Model VRM 0.x dan 1.0 didukung. App dan server sama-sama memeriksa header file sebelum dipakai, jadi file yang salah ditolak lebih awal dan avatar lama tidak rusak.
+**Panel ikut kerekam di OBS** — pakai URL `?ui=0`, bukan URL panel.
 
-**Panel ikut kerekam di OBS**
-Pakai `?ui=0` di URL browser source.
+**Avatar di OBS diam** — panel harus terbuka dan tidak diminimize. Reload source OBS, lalu cek badge
+**OBS 1**.
 
-**Avatar/setelan tidak sama di OBS**
-Pastikan server yang jalan versi terbaru (update app desktop atau `npm start`), lalu reload source OBS sekali. Setelah itu semuanya sinkron otomatis.
+**Kualitas turun sendiri** — itu fitur kualitas otomatis. Matikan di tab Tampilan kalau tidak mau.
 
-**Avatar di OBS diam, tidak ikut gerakan panel**
-Ini bukan bug: OBS adalah tampilan. Pastikan panel browser masih terbuka dan tab-nya tidak diminimize (render loop dijeda saat tab benar-benar hidden). Reload source OBS sekali kalau baru update. Cek `window.__litetuber.pose.status` di console OBS harus `"connected"`.
-
-## Struktur
-
-```
-index.html        UI panel + canvas
-src/main.js       render loop, UI, background, OBS
-src/avatar.js     loader VRM, pose idle, ekspresi
-src/face.js       MediaPipe face tracking -> ekspresi VRM
-src/expressions.js konversi blendshape ke ekspresi VRM (murni, bisa dites)
-src/face-worker.js tracking di Web Worker (fallback ke main thread)
-src/pose-sync.js  relay pose panel -> OBS lewat WebSocket
-src/pose-protocol.js validasi pesan relay pose (dipakai klien + server)
-src/audio.js      lip sync dari mic
-src/vrm.js        validasi header GLB/VRM (dipakai klien + server)
-src/http-cache.js ETag untuk polling state (304 tanpa body)
-src/placeholder.js avatar dummy sebelum VRM dimuat
-serve.mjs         static server + penyimpanan setelan/avatar (data/)
-src-tauri/        aplikasi desktop: server Rust + konfigurasi Tauri
-test/             Vitest: validator VRM, vowelWeights, merge setelan
-docs/ARCHITECTURE.md  alur data, invariant, batasan
-docs/PANDUAN.md   panduan pemakaian untuk pengguna + troubleshooting
-docs/CI-WINDOWS.md strategi build Windows + GitHub Actions
-docs/DESKTOP.md   arsitektur app desktop Tauri + smoke test
-docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
-```
+Masalah lain dan langkah lengkapnya ada di [docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Development
+
+Butuh Node.js 18+. Untuk build desktop, butuh Rust stable dan dependensi Tauri.
 
 ```bash
 npm test        # Vitest
 npm run build   # produksi ke dist/
 npm run serve   # jalankan server tanpa build ulang
-cargo test --manifest-path src-tauri/Cargo.toml   # test server Rust
+npm run tauri dev
+cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22. Workflow Tauri Windows
-menjalankan test yang sama lalu membuild installer NSIS.
+Struktur modul dan alur data ada di [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Build installer
+Windows dan CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md); arsitektur desktop ada di
+[docs/DESKTOP.md](docs/DESKTOP.md).
 
-Build installer Windows dan strategi CI Tauri ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md). PC Windows tidak perlu dipakai untuk CI; cukup untuk smoke test installer.
+CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22. Workflow Tauri Windows
+menjalankan test yang sama, `cargo test`, lalu membuild installer NSIS.
 
 ## Lisensi
 
-MIT — lihat [LICENSE](LICENSE). Model contoh tidak disertakan. Lisensi dependensi ada di [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT — lihat [LICENSE](LICENSE). Model contoh tidak disertakan. Lisensi dependensi ada di
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

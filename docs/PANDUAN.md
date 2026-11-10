@@ -29,6 +29,18 @@ dibuat, lihat [CI-WINDOWS.md](CI-WINDOWS.md). Untuk development di laptop Linux:
 npm run tauri dev
 ```
 
+### Kalau memakai installer Windows
+
+1. Unduh artifact `litetuber-nsis` dari GitHub Actions (**Tauri Windows → run terbaru**), lalu ekstrak.
+2. Jalankan file `*-setup.exe`.
+3. Kalau Windows menampilkan SmartScreen, pilih **More info → Run anyway**. Build ini belum
+   ditandatangani.
+4. Buka **LiteTuber** dari Start Menu.
+5. Jendela LiteTuber adalah panel. Biarkan terbuka saat OBS dipakai.
+
+Untuk update, tutup app lalu jalankan installer versi baru. Data di `%APPDATA%` tidak dihapus.
+Untuk uninstall, pakai **Settings → Apps → LiteTuber → Uninstall**.
+
 ## 2. Pertama kali
 
 1. Buka `http://127.0.0.1:8770/` (atau jendela LiteTuber).
