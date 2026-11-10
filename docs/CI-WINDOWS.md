@@ -32,10 +32,14 @@ tetap bisa menjadi remote utama untuk kode sehari-hari.
 File: `.github/workflows/tauri.yml`. Isinya:
 
 - jalan di `windows-latest` lewat `workflow_dispatch` atau tag `v*`,
-- memasang Node 20, Rust stable, dan cache Cargo,
+- memasang Node 22, Rust stable, dan cache Cargo,
 - menjalankan `npm ci`, `npm test`, `npm run build`, lalu `cargo test`,
 - membuild installer NSIS dengan `tauri-action`,
 - mengunggah `.exe` sebagai artifact `litetuber-nsis`.
+
+Workflow memakai npm secara eksplisit (`tauriScript: npm run tauri`). Repo hanya menyimpan
+`package-lock.json`; jangan tambahkan `bun.lock`, `pnpm-lock.yaml`, atau `yarn.lock`, karena
+`tauri-action` akan memilih package manager itu dan runner Windows tidak menyediakannya.
 
 Belum ada pembuatan GitHub Release otomatis. Untuk rilis, ambil artifact dari halaman run lalu
 upload manual; nanti bisa ditambah `tagName`/`releaseDraft` di `tauri-action`.

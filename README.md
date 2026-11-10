@@ -111,7 +111,7 @@ Struktur modul dan alur data ada di [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 Windows dan CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md); arsitektur desktop ada di
 [docs/DESKTOP.md](docs/DESKTOP.md).
 
-CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22. Workflow Tauri Windows
+CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 22 dan 24. Workflow Tauri Windows
 menjalankan test yang sama, `cargo test`, lalu membuild installer NSIS.
 
 ## Lisensi

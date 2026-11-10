@@ -125,7 +125,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # server Rust + pose + VRM
 
 - `dist/` tidak di-commit.
 - Worker menghasilkan bundel IIFE terpisah di `dist/assets/`; itu normal.
-- CI (`.github/workflows/ci.yml`) menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22.
+- CI (`.github/workflows/ci.yml`) menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 22 dan 24.
 
 ## Catatan deployment
 
