@@ -11,6 +11,7 @@ export const defaults = {
   fpsCap: 60,
   renderScale: 1,
   trackHz: 30,
+  autoQuality: true,
   mouthSrc: "both",
   micGain: 1,
   autoBlink: true,

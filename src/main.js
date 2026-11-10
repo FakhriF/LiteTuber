@@ -21,18 +21,64 @@ let avatarBusy = false;
 if (params.get("ui") === "0") settings.panelHidden = true;
 if (params.get("bg")) settings.bg = params.get("bg");
 
-const canvas = $("stage");
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  alpha: true,
-  antialias: true,
-  powerPreference: "high-performance",
-});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-renderer.setClearColor(0x000000, 0);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = settings.exposure;
+let canvas = $("stage");
+
+// Adaptive quality state. `scale` moves on its own when the GPU can't keep up;
+// `userScale` is what the panel says, and `effTrackHz` may be lowered for the
+// same reason. Both are restored as soon as there is headroom again.
+const quality = {
+  userScale: Number(settings.renderScale) || 1,
+  scale: Number(settings.renderScale) || 1,
+  effTrackHz: Number(settings.trackHz) || 30,
+  fpsEma: 0,
+  lastAdjust: 0,
+  lastDown: 0,
+};
+let antialiasActive = quality.userScale >= 0.9;
+
+function buildRenderer(target) {
+  const r = new THREE.WebGLRenderer({
+    canvas: target,
+    alpha: true,
+    antialias: antialiasActive,
+    powerPreference: "high-performance",
+  });
+  r.setClearColor(0x000000, 0);
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  r.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
+  r.toneMappingExposure = settings.exposure;
+  return r;
+}
+
+let renderer = buildRenderer(canvas);
+
+// Antialias is a context attribute, so switching it means a new canvas. A fresh
+// canvas is built off-DOM first, so a failure leaves the running one untouched.
+function rebuildRenderer() {
+  const nextCanvas = document.createElement("canvas");
+  nextCanvas.id = "stage";
+  let next;
+  try {
+    next = buildRenderer(nextCanvas);
+  } catch (err) {
+    console.error("rebuild renderer gagal", err);
+    return false;
+  }
+  const old = renderer;
+  canvas.replaceWith(nextCanvas);
+  canvas = nextCanvas;
+  renderer = next;
+  resize();
+  // A resized canvas is cleared; draw once so switching quality never flashes blank.
+  renderer.render(scene, camera);
+  try {
+    old.dispose();
+    old.forceContextLoss();
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
@@ -157,8 +203,10 @@ function applyServerSettings(incoming) {
   applyingServer = true;
   Object.assign(settings, next);
   syncUI();
+  syncQualityFromSettings();
   applyBackground();
   applyFraming();
+  applyRenderScaleSetting();
   renderer.toneMappingExposure = settings.exposure;
   store.saveSettings(settings);
   applyingServer = false;
@@ -442,6 +490,7 @@ function syncUI() {
   $("fpsCap").value = String(settings.fpsCap);
   $("renderScale").value = String(settings.renderScale);
   $("trackHz").value = String(settings.trackHz);
+  $("autoQuality").checked = settings.autoQuality !== false;
   renderer.toneMappingExposure = settings.exposure;
 }
 
@@ -574,15 +623,24 @@ $("exposure").addEventListener("input", (e) => {
 });
 $("renderScale").addEventListener("change", (e) => {
   settings.renderScale = Number(e.target.value);
-  resize();
+  syncQualityFromSettings();
+  applyRenderScaleSetting();
   commit();
 });
 $("trackHz").addEventListener("change", (e) => {
   settings.trackHz = Number(e.target.value);
+  quality.effTrackHz = settings.trackHz;
   commit();
 });
 $("fpsCap").addEventListener("change", (e) => {
   settings.fpsCap = Number(e.target.value);
+  quality.fpsEma = 0;
+  commit();
+});
+$("autoQuality").addEventListener("change", (e) => {
+  settings.autoQuality = e.target.checked;
+  syncQualityFromSettings();
+  applyAutoScale();
   commit();
 });
 
@@ -664,16 +722,71 @@ dropZone.addEventListener("drop", (e) => {
   }
 });
 
-function resize() {
+function applySize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setPixelRatio(
-    Math.max(0.4, Math.min(window.devicePixelRatio || 1, 1.5) * (settings.renderScale || 1)),
-  );
+  const base = Math.max(0.4, Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(base * (quality.scale || 1));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
+}
+
+function resize() {
+  applySize();
   applyFraming();
 }
 window.addEventListener("resize", resize);
+
+function syncQualityFromSettings() {
+  quality.userScale = Number(settings.renderScale) || 1;
+  quality.scale = quality.userScale;
+  quality.effTrackHz = Number(settings.trackHz) || 30;
+  quality.fpsEma = 0;
+}
+
+function applyAutoScale() {
+  applySize();
+}
+
+function applyRenderScaleSetting() {
+  const wantAA = quality.userScale >= 0.9;
+  if (wantAA !== antialiasActive && rebuildRenderer()) {
+    antialiasActive = wantAA;
+    return;
+  }
+  resize();
+}
+
+// Keeps the frame budget honest on weak machines: drops render scale first,
+// then tracking rate, and walks both back up once there is headroom.
+function adaptQuality(now, dt) {
+  if (!settings.autoQuality || dt <= 0) return;
+  const inst = 1 / dt;
+  quality.fpsEma = quality.fpsEma ? quality.fpsEma * 0.9 + inst * 0.1 : inst;
+  if (now - quality.lastAdjust < 1500) return;
+  quality.lastAdjust = now;
+
+  const target = Number(settings.fpsCap) || 60;
+  const minScale = 0.4;
+  const fps = quality.fpsEma;
+  let changed = false;
+
+  if (fps < target * 0.8 && quality.scale > minScale) {
+    quality.scale = Math.max(minScale, Math.round((quality.scale - 0.15) * 100) / 100);
+    quality.lastDown = now;
+    changed = true;
+  } else if (fps < target * 0.9 && quality.effTrackHz > 15 && face.detectMs > 12) {
+    quality.effTrackHz = quality.effTrackHz > 30 ? 30 : 15;
+  } else if (
+    fps > target * 0.97 &&
+    quality.scale < quality.userScale &&
+    now - quality.lastDown > 6000
+  ) {
+    quality.scale = Math.min(quality.userScale, Math.round((quality.scale + 0.05) * 100) / 100);
+    changed = true;
+  }
+
+  if (changed) applyAutoScale();
+}
 
 /* ---------- loop ---------- */
 
@@ -698,6 +811,22 @@ let lastRender = 0;
 let lastStatus = 0;
 let lastTrack = 0;
 
+// The mic meter is cosmetic; repainting it every frame forces a style recalc
+// for no visible gain.
+let meterAt = 0;
+let meterPct = -1;
+let meterRunning = false;
+function uiMeter(now) {
+  if (now - meterAt < 100) return;
+  meterAt = now;
+  const pct = Math.round(micLevel * 100);
+  if (pct === meterPct && mic.running === meterRunning) return;
+  meterPct = pct;
+  meterRunning = mic.running;
+  $("micMeter").style.setProperty("--level", `${pct}%`);
+  $("micDb").textContent = mic.running ? String(pct) : "–";
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
 
@@ -715,7 +844,7 @@ function frame(now) {
   for (const key of KEYS) tmpTarget[key] = 0;
 
   if (face.running) {
-    const trackMs = 1000 / Math.max(5, Number(settings.trackHz) || 30);
+    const trackMs = 1000 / Math.max(5, quality.effTrackHz || 30);
     if (now - lastTrack >= trackMs) {
       lastTrack = now;
       face.sample(now);
@@ -764,8 +893,7 @@ function frame(now) {
     tmpTarget.happy = Math.max(tmpTarget.happy, 0.55);
   }
 
-  $("micMeter").style.setProperty("--level", `${Math.round(micLevel * 100)}%`);
-  $("micDb").textContent = mic.running ? String(Math.round(micLevel * 100)) : "–";
+  uiMeter(now);
 
   if (!faceSeen && settings.autoBlink) {
     tmpTarget.blink = Math.max(tmpTarget.blink, updateAutoBlink(dt));
@@ -793,11 +921,17 @@ function frame(now) {
   avatar.update(dt, settings.useSpring);
 
   renderer.render(scene, camera);
+  adaptQuality(now, dt);
 
   fpsFrames += 1;
   fpsTime += dt;
   if (fpsTime >= 0.5) {
-    $("fps").textContent = `${Math.round(fpsFrames / fpsTime)} fps`;
+    const shown = Math.round(fpsFrames / fpsTime);
+    const pct = Math.round(quality.scale * 100);
+    $("fps").textContent =
+      settings.autoQuality && pct !== Math.round(quality.userScale * 100)
+        ? `${shown} fps · ${pct}%`
+        : `${shown} fps`;
     fpsFrames = 0;
     fpsTime = 0;
   }
@@ -895,6 +1029,10 @@ window.__litetuber = {
   face,
   mic,
   settings,
+  quality,
+  get renderer() {
+    return renderer;
+  },
   smoothW,
   get micLevel() {
     return micLevel;
