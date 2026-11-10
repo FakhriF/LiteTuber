@@ -31,7 +31,9 @@ npm run tauri dev
 
 ### Kalau memakai installer Windows
 
-1. Unduh artifact `litetuber-nsis` dari GitHub Actions (**Tauri Windows → run terbaru**), lalu ekstrak.
+1. Buka halaman **Releases** repo, pilih versi terbaru, lalu unduh `*-setup.exe` dari **Assets**.
+   File di Releases tidak perlu akun GitHub. Kalau belum ada rilis, ambil artifact `litetuber-nsis`
+   dari **Actions → Tauri Windows** (perlu login).
 2. Jalankan file `*-setup.exe`.
 3. Kalau Windows menampilkan SmartScreen, pilih **More info → Run anyway**. Build ini belum
    ditandatangani.

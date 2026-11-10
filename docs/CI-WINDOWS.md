@@ -35,14 +35,28 @@ File: `.github/workflows/tauri.yml`. Isinya:
 - memasang Node 22, Rust stable, dan cache Cargo,
 - menjalankan `npm ci`, `npm test`, `npm run build`, lalu `cargo test`,
 - membuild installer NSIS dengan `tauri-action`,
-- mengunggah `.exe` sebagai artifact `litetuber-nsis`.
+- mengunggah `.exe` sebagai artifact `litetuber-nsis`,
+- kalau dipicu oleh tag `v*`, otomatis membuat GitHub Release dan menaruh installer di Assets.
 
 Workflow memakai npm secara eksplisit (`tauriScript: npm run tauri`). Repo hanya menyimpan
 `package-lock.json`; jangan tambahkan `bun.lock`, `pnpm-lock.yaml`, atau `yarn.lock`, karena
 `tauri-action` akan memilih package manager itu dan runner Windows tidak menyediakannya.
 
-Belum ada pembuatan GitHub Release otomatis. Untuk rilis, ambil artifact dari halaman run lalu
-upload manual; nanti bisa ditambah `tagName`/`releaseDraft` di `tauri-action`.
+## Membuat rilis
+
+Rilis dibuat otomatis dari tag, jadi tidak perlu upload manual:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Gitea akan mirror tag ke GitHub, lalu workflow **Tauri Windows** berjalan, membuild NSIS, dan
+membuat release `LiteTuber v0.1.0` berisi `*-setup.exe`. Halaman Releases bisa diunduh tanpa akun
+GitHub; artifact Actions tetap ada sebagai cadangan dan memerlukan login.
+
+`workflow_dispatch` (tombol **Run workflow**) hanya menghasilkan artifact, tidak membuat release.
+Pastikan versi di `package.json` dan `src-tauri/tauri.conf.json` sudah dinaikkan sebelum membuat tag.
 
 Distribusi portable (ZIP tanpa installer) belum dibuat. NSIS saat ini adalah satu-satunya target
 bundle; portable bisa ditambahkan setelah installer pertama berhasil diuji.

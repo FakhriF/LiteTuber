@@ -8,10 +8,12 @@ Panduan lengkap: [docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Install di Windows
 
-Installer belum tersedia sebagai download resmi. Kalau build dari GitHub Actions sudah ada:
+Installer dirilis lewat halaman [Releases](https://github.com/FakhriF/LiteTuber/releases). File di
+Releases bisa diunduh tanpa akun GitHub. Kalau halaman itu masih kosong, build terbaru ada di
+artifact Actions (perlu login GitHub).
 
-1. Buka repo di GitHub, masuk **Actions → Tauri Windows**, lalu pilih run terbaru.
-2. Unduh artifact `litetuber-nsis`, ekstrak, lalu jalankan file `*-setup.exe`.
+1. Buka **Releases**, pilih versi terbaru, lalu unduh file `*-setup.exe` di bagian **Assets**.
+2. Jalankan installer.
 3. Kalau muncul SmartScreen, pilih **More info → Run anyway**. Build ini belum ditandatangani.
 4. Buka **LiteTuber** dari Start Menu.
 5. Tambahkan **Browser Source** di OBS dengan URL `http://127.0.0.1:8770/?ui=0`, ukuran `1920×1080`.
@@ -19,7 +21,11 @@ Installer belum tersedia sebagai download resmi. Kalau build dari GitHub Actions
 Jendela LiteTuber adalah panel pengaturan. Biarkan tetap terbuka saat OBS dipakai. Data app disimpan
 di `%APPDATA%\app.litetuber.desktop\`.
 
-Cara membuat installer lewat CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
+Kalau belum ada rilis dan kamu hanya ingin mencoba build terbaru: buka **Actions → Tauri Windows**,
+pilih run terbaru, unduh artifact `litetuber-nsis`, lalu ekstrak. Artifact Actions memerlukan akun
+GitHub; file di Releases tidak.
+
+Cara membuat installer dan rilis lewat CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
 
 ## Jalankan tanpa installer
 
