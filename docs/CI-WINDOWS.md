@@ -27,77 +27,45 @@ jalur utama.
 Rekomendasi: **mirror repo ke GitHub, pakai GitHub Actions untuk build Windows.** Gitea/Tencent
 tetap bisa menjadi remote utama untuk kode sehari-hari.
 
-## Workflow yang dipakai nanti
+## Workflow yang sudah ada
 
-Tambahkan setelah scaffold `src-tauri/` ada:
+File: `.github/workflows/tauri.yml`. Isinya:
 
-```yaml
-name: Tauri Windows
+- jalan di `windows-latest` lewat `workflow_dispatch` atau tag `v*`,
+- memasang Node 20, Rust stable, dan cache Cargo,
+- menjalankan `npm ci`, `npm test`, `npm run build`,
+- membuild installer NSIS dengan `tauri-action`,
+- mengunggah `.exe` sebagai artifact `litetuber-nsis`.
 
-on:
-  workflow_dispatch:
-  push:
-    tags: ["v*"]
-
-jobs:
-  build:
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: "./src-tauri -> target"
-
-      - run: npm ci
-      - run: npm run build
-
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "LiteTuber v__VERSION__"
-          releaseDraft: true
-          prerelease: false
-```
-
-Workflow ini menghasilkan installer NSIS/MSI dan menaruhnya di GitHub Releases (draft). Setelah
-scaffold Tauri, `package.json` juga perlu:
-
-```json
-{
-  "scripts": {
-    "tauri": "tauri"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^2"
-  }
-}
-```
+Belum ada pembuatan GitHub Release otomatis. Untuk rilis, ambil artifact dari halaman run lalu
+upload manual; nanti bisa ditambah `tagName`/`releaseDraft` di `tauri-action`.
 
 ## Alur kerja yang disarankan
 
 1. Kode tetap ditulis dan dites di laptop Linux:
-   `npm test`, `npm run build`.
-2. Push ke Gitea dan mirror ke GitHub.
-3. Jalankan workflow **Tauri Windows** secara manual, atau buat tag `v0.1.0`.
-4. Unduh installer dari GitHub Releases.
+   `npm test`, `npm run build`, `cargo test --manifest-path src-tauri/Cargo.toml`.
+2. Push ke Gitea, lalu mirror ke GitHub (remote `github`).
+3. Buka tab **Actions → Tauri Windows → Run workflow** di GitHub, atau buat tag `v0.1.0`.
+4. Unduh artifact `litetuber-nsis` dari halaman run.
 5. Pasang installer itu di PC gaming sekali, lalu cek:
    - app terbuka dan server lokal jalan,
    - kamera/mic berfungsi,
    - OBS Browser Source `http://127.0.0.1:8770/?ui=0` menerima pose.
 
 PC gaming tidak perlu Node, Rust, atau Visual Studio. Cukup jadi mesin uji.
+
+## Build desktop dari laptop Linux
+
+Scaffold Tauri bisa dikompilasi di Linux untuk menangkap error:
+
+```bash
+npm run build
+npm run tauri build -- --debug --no-bundle
+```
+
+Hasilnya binary Linux di `src-tauri/target/debug/litetuber`. Installer Windows tetap harus dibuild
+di Windows/CI karena memakai NSIS dan toolchain MSVC.
+
 
 ## Catatan signing
 

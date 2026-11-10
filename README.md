@@ -30,6 +30,20 @@ Kalau sudah pernah build dan cuma mau jalanin:
 npm run serve
 ```
 
+## Versi desktop (Tauri)
+
+Scaffold Tauri v2 ada di `src-tauri/`. Versi desktop tetap membuka
+`http://127.0.0.1:8770/`, jadi URL OBS tidak berubah. Server, penyimpanan setelan/avatar, dan relay
+pose dipindah ke Rust supaya installer tidak butuh Node.js.
+
+```bash
+npm run build
+npm run tauri build        # installer untuk OS yang sedang dipakai
+```
+
+Installer Windows (NSIS) dibuild lewat GitHub Actions; PC gaming hanya dipakai untuk smoke test.
+Detail: [docs/DESKTOP.md](docs/DESKTOP.md) dan [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
+
 ## Pakai di OBS
 
 1. Jalankan `npm start` (biarkan terminal terbuka).
@@ -113,9 +127,11 @@ src/vrm.js        validasi header GLB/VRM (dipakai klien + server)
 src/http-cache.js ETag untuk polling state (304 tanpa body)
 src/placeholder.js avatar dummy sebelum VRM dimuat
 serve.mjs         static server + penyimpanan setelan/avatar (data/)
+src-tauri/        aplikasi desktop: server Rust + konfigurasi Tauri
 test/             Vitest: validator VRM, vowelWeights, merge setelan
 docs/ARCHITECTURE.md  alur data, invariant, batasan
 docs/CI-WINDOWS.md strategi build Windows + GitHub Actions
+docs/DESKTOP.md   arsitektur app desktop Tauri + smoke test
 docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
 ```
 
@@ -125,9 +141,11 @@ docs/NDI.md       panduan render di PC + rekam di laptop (NDI)
 npm test        # Vitest
 npm run build   # produksi ke dist/
 npm run serve   # jalankan server tanpa build ulang
+cargo test --manifest-path src-tauri/Cargo.toml   # test server Rust
 ```
 
-CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22.
+CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 20 dan 22. Workflow Tauri Windows
+menjalankan test yang sama lalu membuild installer NSIS.
 
 Build installer Windows dan strategi CI Tauri ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md). PC Windows tidak perlu dipakai untuk CI; cukup untuk smoke test installer.
 
