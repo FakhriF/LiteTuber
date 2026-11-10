@@ -8,7 +8,7 @@ Semua berjalan lokal (tidak ada data yang dikirim ke mana-mana).
 
 - Tidak ada aplikasi native, tidak ada Unity/Electron. Cukup tab browser.
 - Model VRM langsung dari file `.vrm` kamu (VRM 0.x dan 1.0).
-- Tracking wajah pakai MediaPipe FaceLandmarker (WASM/GPU), ±30–60 fps.
+- Tracking wajah pakai MediaPipe FaceLandmarker (WASM/GPU), ±30–60 fps, dijalankan di Web Worker supaya render tidak tersendat.
 - Render Three.js dengan MToon, resolusi bisa dibatasi dan FPS bisa dikunci 30.
 - Setelan dan avatar disimpan oleh server lokal (folder `data/`), jadi tidak perlu upload ulang dan otomatis sama di semua jendela — termasuk OBS.
 
@@ -72,6 +72,7 @@ Untuk rekam/live tanpa OBS, bisa juga pakai window capture biasa dengan backgrou
 - Set **Batas FPS** ke `30`.
 - Pakai framing **Kepala & bahu** (model yang dirender lebih sedikit).
 - Kalau tracking terasa berat/aneh, coba `http://127.0.0.1:8770/?delegate=cpu` (pakai CPU, lebih lambat tapi lebih kompatibel).
+- Kalau tracking justru bermasalah setelah update worker, coba `?worker=0` untuk kembali ke mode lama (tracking di main thread).
 - Tutup tab lain yang pakai GPU.
 
 ## Troubleshooting
@@ -95,6 +96,7 @@ index.html        UI panel + canvas
 src/main.js       render loop, UI, background, OBS
 src/avatar.js     loader VRM, pose idle, ekspresi
 src/face.js       MediaPipe face tracking -> ekspresi VRM
+src/face-worker.js tracking di Web Worker (fallback ke main thread)
 src/audio.js      lip sync dari mic
 src/placeholder.js avatar dummy sebelum VRM dimuat
 serve.mjs         static server + penyimpanan setelan/avatar (data/)
