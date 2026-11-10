@@ -3,6 +3,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { inspectVrm } from "./src/vrm.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "dist");
@@ -85,19 +86,43 @@ function readBody(req, limit) {
 }
 
 // Streams straight to disk so a large VRM never sits fully in memory.
-async function writeFileLimited(req, file, limit) {
+// `validate`, when given, is called with the growing prefix of the body until it
+// returns ok. Nothing is renamed into place until that check passes.
+async function writeFileLimited(req, file, limit, validate) {
   const tmp = `${file}.part`;
   const out = fs.createWriteStream(tmp);
   let size = 0;
+  let prefix = validate ? Buffer.alloc(0) : null;
+  let validated = !validate;
   try {
     for await (const chunk of req) {
       size += chunk.length;
       if (size > limit) throw Object.assign(new Error("too large"), { code: 413 });
+
+      if (!validated) {
+        prefix = Buffer.concat([prefix, chunk]);
+        const check = validate(prefix);
+        if (check.ok) {
+          validated = true;
+          prefix = null;
+        } else if (!check.needMore) {
+          throw Object.assign(new Error(check.reason || "invalid avatar"), { code: 415 });
+        } else if (prefix.length > 20 * 1024 * 1024) {
+          throw Object.assign(new Error("header avatar terlalu besar"), { code: 415 });
+        }
+      }
+
       if (!out.write(chunk)) {
         await new Promise((resolve, reject) => {
           out.once("drain", resolve);
           out.once("error", reject);
         });
+      }
+    }
+    if (!validated) {
+      const check = validate(prefix);
+      if (!check.ok) {
+        throw Object.assign(new Error(check.reason || "avatar tidak lengkap"), { code: 415 });
       }
     }
     await new Promise((resolve, reject) => {
@@ -178,13 +203,14 @@ async function handleApi(req, res, pathname, query) {
 
   if (pathname === "/api/avatar" && req.method === "PUT") {
     try {
-      await writeFileLimited(req, avatarPath, 300 * 1024 * 1024);
+      await writeFileLimited(req, avatarPath, 300 * 1024 * 1024, inspectVrm);
       const state = await readState();
       state.avatarName = query.get("name") || "avatar";
       await fsp.writeFile(statePath, JSON.stringify(state, null, 2));
       sendJson(res, 200, { ok: true, name: state.avatarName });
     } catch (err) {
-      sendJson(res, err.code === 413 ? 413 : 500, { error: String(err.message || err) });
+      const code = err.code === 413 || err.code === 415 ? err.code : 500;
+      sendJson(res, code, { error: String(err.message || err) });
     }
     return true;
   }

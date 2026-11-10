@@ -3,6 +3,7 @@ import { VrmAvatar } from "./avatar.js";
 import { PlaceholderAvatar } from "./placeholder.js";
 import { FaceTracker } from "./face.js";
 import { MicMouth } from "./audio.js";
+import { inspectVrm } from "./vrm.js";
 import * as store from "./store.js";
 
 const $ = (id) => document.getElementById(id);
@@ -214,11 +215,34 @@ function applyServerSettings(incoming) {
 }
 
 async function pushAvatar(buffer, name) {
-  try {
-    await fetch(`/api/avatar?name=${encodeURIComponent(name)}`, { method: "PUT", body: buffer });
-  } catch {
-    /* server optional */
-  }
+  const label = $("vrmName");
+  // XHR (not fetch) because upload progress events are what let a 15 MB avatar
+  // show a percentage instead of looking frozen.
+  await new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", `/api/avatar?name=${encodeURIComponent(name)}`);
+    xhr.upload.addEventListener("progress", (e) => {
+      if (!e.lengthComputable) return;
+      if (!label.textContent.startsWith(name)) return;
+      const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
+      label.textContent = `${name} · mengunggah ${pct}%`;
+    });
+    const done = (ok, code) => {
+      label.textContent = name;
+      if (!ok) {
+        toast(
+          code === 415
+            ? "Server menolak: file bukan avatar VRM valid"
+            : `Gagal menyimpan avatar ke server (${code})`,
+        );
+      }
+      resolve();
+    };
+    xhr.addEventListener("load", () => done(xhr.status >= 200 && xhr.status < 300, xhr.status));
+    xhr.addEventListener("error", () => done(false, 0));
+    xhr.addEventListener("abort", () => done(false, 0));
+    xhr.send(buffer);
+  });
 }
 
 async function loadServerAvatar(state) {
@@ -317,6 +341,11 @@ async function setBackgroundImageFromStore() {
 
 async function loadVrmBuffer(buffer, name, persist = true) {
   if (avatarBusy) return;
+  const check = inspectVrm(new Uint8Array(buffer));
+  if (!check.ok) {
+    toast(`Bukan avatar VRM valid: ${check.reason || "file tidak lengkap"}`);
+    return;
+  }
   avatarBusy = true;
   const next = new VrmAvatar(scene);
   try {
@@ -1039,6 +1068,9 @@ window.__litetuber = {
   },
   get avatar() {
     return avatar;
+  },
+  get avatarBusy() {
+    return avatarBusy;
   },
 };
 
