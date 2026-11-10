@@ -49,6 +49,7 @@ Dokumen ini menjelaskan bentuk sistem, alasan di balik keputusan penting, dan at
 | `src/audio.js` | Analisis mic, `vowelWeights`, smoothing mulut |
 | `src/store.js` | Default setelan, localStorage, cache IndexedDB |
 | `src/vrm.js` | Validasi header GLB/VRM, dipakai klien dan server |
+| `src/http-cache.js` | ETag dari revisi + mtime/size, dipakai `/api/state` |
 | `serve.mjs` | Static server + REST API, validasi upload, tulis atomik |
 | `index.html` | Panel kontrol (bukan framework; event di-wire manual) |
 | `src/style.css` | Semua styling panel dan background |
@@ -95,11 +96,14 @@ Adaptive quality hanya boleh menurunkan `renderScale`/`trackHz` ketika FPS di ba
 ## Jalur state
 
 1. UI mengubah `settings` → `store.saveSettings` (debounce 120 ms) → `pushSettings` (debounce 350 ms) → `PUT /api/state`.
-2. Klien lain memanggil `GET /api/state` tiap ±2,5 detik.
-3. `applyServerSettings` membandingkan state, lalu `Object.assign` + `syncUI` + apply background/framing/scale. Flag `applyingServer` mencegah echo balik ke server.
-4. Avatar/background hanya diunduh ulang kalau `mtime` berubah.
+2. Klien lain memanggil `GET /api/state` tiap ±2,5 detik dengan `If-None-Match` berisi ETag terakhir.
+3. ETag dihitung dari revisi tulis + mtime/size `state.json`, `avatar.vrm`, dan `background.json`. Kalau tidak berubah, server menjawab `304` tanpa body, jadi klien tidak perlu parse JSON.
+4. Saat berubah, `applyServerSettings` membandingkan state, lalu `Object.assign` + `syncUI` + apply background/framing/scale. Flag `applyingServer` mencegah echo balik ke server.
+5. Avatar/background hanya diunduh ulang kalau `mtime` berubah.
 
-Keterbatasan yang diketahui: last-write-wins, tanpa ETag, dan tiga lapisan cache (localStorage, IndexedDB, `data/`). Cukup untuk satu panel + satu OBS.
+Semua tulis state/background memakai file sementara lalu `rename`, dan read-modify-write diserialisasi supaya dua penyimpanan cepat tidak saling menimpa.
+
+Keterbatasan yang diketahui: last-write-wins jika dua klien menulis settings pada saat yang sama, dan tiga lapisan cache (localStorage, IndexedDB, `data/`). Cukup untuk satu panel + satu OBS.
 
 ## Build dan tes
 

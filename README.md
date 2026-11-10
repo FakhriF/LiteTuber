@@ -100,6 +100,7 @@ src/face.js       MediaPipe face tracking -> ekspresi VRM
 src/face-worker.js tracking di Web Worker (fallback ke main thread)
 src/audio.js      lip sync dari mic
 src/vrm.js        validasi header GLB/VRM (dipakai klien + server)
+src/http-cache.js ETag untuk polling state (304 tanpa body)
 src/placeholder.js avatar dummy sebelum VRM dimuat
 serve.mjs         static server + penyimpanan setelan/avatar (data/)
 test/             Vitest: validator VRM, vowelWeights, merge setelan
