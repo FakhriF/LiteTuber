@@ -2,19 +2,21 @@
 
 Alternatif super ringan buat Warudo/VTube Studio: render avatar VRM di browser, tracking wajah dari webcam, gerak mulut dari mic, background transparan/green screen, dan langsung dipakai sebagai **OBS Browser Source**.
 
-Semua berjalan lokal (tidak ada data yang dikirim ke mana-mana).
+Semua berjalan lokal (tidak ada data yang dikirim ke mana-mana). Ada dua cara memakai: mode browser dan aplikasi desktop Tauri. Keduanya membuka URL yang sama, jadi OBS tidak perlu diubah.
+
+Panduan langkah-demi-langkah: [docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Kenapa ini ringan
 
-- Tidak ada aplikasi native, tidak ada Unity/Electron. Cukup tab browser.
+- Mode browser tidak butuh aplikasi native, Unity, atau Electron. Cukup tab browser. Versi desktop memakai Tauri dengan WebView sistem, bukan Electron.
 - Model VRM langsung dari file `.vrm` kamu (VRM 0.x dan 1.0).
 - Tracking wajah pakai MediaPipe FaceLandmarker (WASM/GPU), ±30–60 fps, dijalankan di Web Worker supaya render tidak tersendat.
 - Render Three.js dengan MToon, resolusi bisa dibatasi dan FPS bisa dikunci 30.
-- Setelan dan avatar disimpan oleh server lokal (folder `data/`), jadi tidak perlu upload ulang dan otomatis sama di semua jendela — termasuk OBS.
+- Setelan dan avatar disimpan oleh server lokal (folder `data/`, atau app-data Tauri di mode desktop), jadi tidak perlu upload ulang dan otomatis sama di semua jendela — termasuk OBS.
 
 ## Menjalankan
 
-Butuh Node.js 18+.
+Butuh Node.js 18+ untuk mode browser. Kalau memakai installer desktop, Node tidak diperlukan.
 
 ```bash
 cd ~/Projects/vtuber-lite
@@ -22,7 +24,8 @@ npm install      # sekali saja
 npm start        # build + jalankan server
 ```
 
-Buka `http://127.0.0.1:8770/`.
+Buka `http://127.0.0.1:8770/`. Setelah itu ikuti [docs/PANDUAN.md](docs/PANDUAN.md) untuk memilih
+avatar, menyalakan kamera/mic, dan memasang OBS.
 
 Kalau sudah pernah build dan cuma mau jalanin:
 
@@ -46,13 +49,13 @@ Detail: [docs/DESKTOP.md](docs/DESKTOP.md) dan [docs/CI-WINDOWS.md](docs/CI-WIND
 
 ## Pakai di OBS
 
-1. Jalankan `npm start` (biarkan terminal terbuka).
+1. Jalankan LiteTuber: `npm start` untuk mode browser, atau buka app desktop (biarkan tetap terbuka).
 2. Di OBS: **Sources → + → Browser**.
 3. URL: `http://127.0.0.1:8770/?ui=0` (tombol **Salin URL untuk OBS** di panel juga bisa).
 4. Width `1920`, Height `1080`.
 5. Background transparan otomatis — tidak perlu chroma key. Kalau mau green screen, pilih **Green** di panel.
 
-OBS punya storage browser sendiri, jadi dulu avatar/setelan tidak ikut. Sekarang semua disimpan di server (`data/`), jadi source OBS otomatis memakai avatar dan setelan yang sama. Perubahan di panel (mirror, framing, background, avatar baru) ikut ter-update di OBS dalam ±3 detik tanpa reload.
+OBS punya storage browser sendiri, jadi dulu avatar/setelan tidak ikut. Sekarang semua disimpan di server (`data/` di mode browser, app-data Tauri di mode desktop), jadi source OBS otomatis memakai avatar dan setelan yang sama. Perubahan di panel (mirror, framing, background, avatar baru) ikut ter-update di OBS dalam ±3 detik tanpa reload.
 
 Source OBS itu **tampilan saja**, bukan panel kedua. Gerakan kepala, kedip, dan mulut dikirim live dari panel browser lewat relay lokal (`/ws/pose`), jadi OBS tidak perlu kamera sendiri dan tidak perlu diatur dari dalam OBS. Atur semuanya di panel browser.
 
@@ -106,7 +109,7 @@ Pastikan file benar-benar `.vrm` (bukan `.vrm` yang di-rename). Model VRM 0.x da
 Pakai `?ui=0` di URL browser source.
 
 **Avatar/setelan tidak sama di OBS**
-Pastikan server yang jalan versi terbaru (`npm start`), lalu reload source OBS sekali. Setelah itu semuanya sinkron otomatis.
+Pastikan server yang jalan versi terbaru (update app desktop atau `npm start`), lalu reload source OBS sekali. Setelah itu semuanya sinkron otomatis.
 
 **Avatar di OBS diam, tidak ikut gerakan panel**
 Ini bukan bug: OBS adalah tampilan. Pastikan panel browser masih terbuka dan tab-nya tidak diminimize (render loop dijeda saat tab benar-benar hidden). Reload source OBS sekali kalau baru update. Cek `window.__litetuber.pose.status` di console OBS harus `"connected"`.
@@ -130,6 +133,7 @@ serve.mjs         static server + penyimpanan setelan/avatar (data/)
 src-tauri/        aplikasi desktop: server Rust + konfigurasi Tauri
 test/             Vitest: validator VRM, vowelWeights, merge setelan
 docs/ARCHITECTURE.md  alur data, invariant, batasan
+docs/PANDUAN.md   panduan pemakaian untuk pengguna + troubleshooting
 docs/CI-WINDOWS.md strategi build Windows + GitHub Actions
 docs/DESKTOP.md   arsitektur app desktop Tauri + smoke test
 docs/NDI.md       panduan render di PC + rekam di laptop (NDI)

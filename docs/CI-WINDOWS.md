@@ -33,12 +33,15 @@ File: `.github/workflows/tauri.yml`. Isinya:
 
 - jalan di `windows-latest` lewat `workflow_dispatch` atau tag `v*`,
 - memasang Node 20, Rust stable, dan cache Cargo,
-- menjalankan `npm ci`, `npm test`, `npm run build`,
+- menjalankan `npm ci`, `npm test`, `npm run build`, lalu `cargo test`,
 - membuild installer NSIS dengan `tauri-action`,
 - mengunggah `.exe` sebagai artifact `litetuber-nsis`.
 
 Belum ada pembuatan GitHub Release otomatis. Untuk rilis, ambil artifact dari halaman run lalu
 upload manual; nanti bisa ditambah `tagName`/`releaseDraft` di `tauri-action`.
+
+Distribusi portable (ZIP tanpa installer) belum dibuat. NSIS saat ini adalah satu-satunya target
+bundle; portable bisa ditambahkan setelah installer pertama berhasil diuji.
 
 ## Alur kerja yang disarankan
 
