@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability for the LiteTuber window, which loads the local server URL.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:8770/*", "http://localhost:8770/*"]
+  },
+  "permissions": ["core:default"]
+}

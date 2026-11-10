@@ -71,14 +71,16 @@ Glue WASM MediaPipe memanggil `importScripts`, yang tidak tersedia di module wor
 
 ### 2. Jangan pindah ke protokol `tauri://` atau URL lain
 
-Rencana desktop memakai Tauri, tetapi jendelanya tetap membuka `http://127.0.0.1:8770/`. OBS Browser Source memakai URL yang sama. Kalau protokol berubah, alur dua langkah (jalankan, tempel URL) rusak.
+Desktop memakai Tauri, tetapi jendelanya tetap membuka `http://127.0.0.1:8770/`. OBS Browser Source memakai URL yang sama. Kalau protokol berubah, alur dua langkah (jalankan, tempel URL) rusak.
+
+Server desktop adalah port Rust dari `serve.mjs` di `src-tauri/src/server.rs`. Endpoint, ETag, validasi VRM, dan relay pose harus tetap sama dengan versi Node. Jendela dibuat setelah port berhasil di-bind; kalau port sudah dipakai, app memakai server yang ada.
 
 ### 3. Server adalah bus sinkronisasi
 
 - Panel menulis setelan ke server; OBS tidak perlu tahu apa pun selain mem-poll.
 - `panelHidden` sengaja tidak disinkronkan karena itu state per-jendela.
 - State dibandingkan lewat ETag dari revisi tulis + mtime/size, bukan `JSON.stringify` tiap poll. Jangan menambah polling lebih cepat sebagai pengganti versi.
-- Tulis file selalu atomik (`.part` lalu `rename`). Jangan menulis langsung ke `avatar.vrm` atau `state.json`.
+- Tulis file selalu atomik (`.part` untuk upload avatar, `.tmp` untuk state/background, lalu `rename`). Jangan menulis langsung ke `avatar.vrm`, `state.json`, atau `background.json`.
 - Pose live **tidak** lewat state/poll. Panel mengirim `{w, head}` ke `/ws/pose` ±33 Hz, dan server hanya meneruskan ke viewer `?ui=0`. Jangan menulis pose ke `data/`; itu data sesi, bukan setelan.
 - Server mengirim `{t:"status", viewers}` ke panel setiap viewer masuk/keluar. Panel memakainya hanya untuk badge OBS; status ini bukan state yang disimpan.
 
@@ -118,6 +120,7 @@ npm install
 npm test        # Vitest: validator VRM, vowelWeights, merge setelan
 npm run build   # dist/ (gitignored)
 npm run serve   # PORT=8770
+cargo test --manifest-path src-tauri/Cargo.toml   # server Rust + pose + VRM
 ```
 
 - `dist/` tidak di-commit.
@@ -127,6 +130,6 @@ npm run serve   # PORT=8770
 ## Catatan deployment
 
 - **Portable/browser:** `dist/` + `serve.mjs` + Node 18+.
-- **Tauri (rencana):** server dipindah ke Rust dengan endpoint dan URL identik; data di `%APPDATA%\LiteTuber\data`. Installer Windows hanya bisa dibangun di Windows/CI Windows.
+- **Tauri:** server Rust menyajikan `dist/` yang di-embed dengan endpoint dan URL identik; data di `%APPDATA%\app.litetuber.desktop\`. Installer Windows dibangun di Windows/CI Windows. Detail di [DESKTOP.md](DESKTOP.md).
 - **Microsoft Store:** jalur MSIX (signing gratis oleh Microsoft). EXE/MSI butuh sertifikat sendiri.
 - Jangan bundel avatar contoh tanpa izin lisensi VRM yang jelas.
