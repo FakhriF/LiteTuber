@@ -36,6 +36,7 @@ Dokumen ini menjelaskan bentuk sistem, alasan di balik keputusan penting, dan at
    Panel UI ──PUT /api/state──▶ serve.mjs ──data/state.json
    OBS      ──GET /api/state──▶ serve.mjs (poll ±2,5 dtk)
    Upload   ──PUT /api/avatar─▶ serve.mjs ──data/avatar.vrm
+   Panel    ──WS /ws/pose────▶ serve.mjs ──pose──▶ OBS (live, 33 Hz)
 ```
 
 ## Modul
@@ -45,7 +46,10 @@ Dokumen ini menjelaskan bentuk sistem, alasan di balik keputusan penting, dan at
 | `src/main.js` | Entry, render loop, adaptive quality, wiring UI, polling server, background |
 | `src/avatar.js` | Load VRM, optimasi mesh, idle pose, ekspresi, spring bone |
 | `src/face.js` | Orkestrasi tracking: pilih worker/main-thread, kalibrasi, konversi ke VRM |
+| `src/expressions.js` | Konversi blendshape ke ekspresi VRM, termasuk blink per mata (murni, bisa dites) |
 | `src/face-worker.js` | Entry classic worker: init MediaPipe, inferensi per `ImageBitmap` |
+| `src/pose-sync.js` | Klien WebSocket relay pose panel → OBS, reconnect dengan backoff |
+| `src/pose-protocol.js` | Validasi dan normalisasi pesan pose, dipakai klien dan server |
 | `src/audio.js` | Analisis mic, `vowelWeights`, smoothing mulut |
 | `src/store.js` | Default setelan, localStorage, cache IndexedDB |
 | `src/vrm.js` | Validasi header GLB/VRM, dipakai klien dan server |
@@ -73,8 +77,9 @@ Rencana desktop memakai Tauri, tetapi jendelanya tetap membuka `http://127.0.0.1
 
 - Panel menulis setelan ke server; OBS tidak perlu tahu apa pun selain mem-poll.
 - `panelHidden` sengaja tidak disinkronkan karena itu state per-jendela.
-- Perbandingan state saat ini memakai `JSON.stringify`. Kalau nanti ada lebih dari dua klien, ganti dengan versi/ETag, bukan menambah polling lebih cepat.
+- State dibandingkan lewat ETag dari revisi tulis + mtime/size, bukan `JSON.stringify` tiap poll. Jangan menambah polling lebih cepat sebagai pengganti versi.
 - Tulis file selalu atomik (`.part` lalu `rename`). Jangan menulis langsung ke `avatar.vrm` atau `state.json`.
+- Pose live **tidak** lewat state/poll. Panel mengirim `{w, head}` ke `/ws/pose` ±33 Hz, dan server hanya meneruskan ke viewer `?ui=0`. Jangan menulis pose ke `data/`; itu data sesi, bukan setelan.
 
 ### 4. Upload divalidasi sebelum dipakai
 

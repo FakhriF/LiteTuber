@@ -40,6 +40,8 @@ npm run serve
 
 OBS punya storage browser sendiri, jadi dulu avatar/setelan tidak ikut. Sekarang semua disimpan di server (`data/`), jadi source OBS otomatis memakai avatar dan setelan yang sama. Perubahan di panel (mirror, framing, background, avatar baru) ikut ter-update di OBS dalam ±3 detik tanpa reload.
 
+Source OBS itu **tampilan saja**, bukan panel kedua. Gerakan kepala, kedip, dan mulut dikirim live dari panel browser lewat relay lokal (`/ws/pose`), jadi OBS tidak perlu kamera sendiri dan tidak perlu diatur dari dalam OBS. Atur semuanya di panel browser.
+
 Kalau OBS dibuat sebelum update ini, reload source-nya sekali (**klik kanan → Refresh**).
 
 Mau render di PC dan merekam di laptop lain? Lihat [docs/NDI.md](docs/NDI.md).
@@ -90,6 +92,9 @@ Pakai `?ui=0` di URL browser source.
 **Avatar/setelan tidak sama di OBS**
 Pastikan server yang jalan versi terbaru (`npm start`), lalu reload source OBS sekali. Setelah itu semuanya sinkron otomatis.
 
+**Avatar di OBS diam, tidak ikut gerakan panel**
+Ini bukan bug: OBS adalah tampilan. Pastikan panel browser masih terbuka dan tab-nya tidak diminimize (render loop dijeda saat tab benar-benar hidden). Reload source OBS sekali kalau baru update. Cek `window.__litetuber.pose.status` di console OBS harus `"connected"`.
+
 ## Struktur
 
 ```
@@ -97,7 +102,10 @@ index.html        UI panel + canvas
 src/main.js       render loop, UI, background, OBS
 src/avatar.js     loader VRM, pose idle, ekspresi
 src/face.js       MediaPipe face tracking -> ekspresi VRM
+src/expressions.js konversi blendshape ke ekspresi VRM (murni, bisa dites)
 src/face-worker.js tracking di Web Worker (fallback ke main thread)
+src/pose-sync.js  relay pose panel -> OBS lewat WebSocket
+src/pose-protocol.js validasi pesan relay pose (dipakai klien + server)
 src/audio.js      lip sync dari mic
 src/vrm.js        validasi header GLB/VRM (dipakai klien + server)
 src/http-cache.js ETag untuk polling state (304 tanpa body)
