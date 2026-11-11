@@ -190,7 +190,24 @@
         </section>
 
         <section data-tab="display">
-          <h3>Preset</h3>
+          <h3>Profil</h3>
+          <label class="select">
+            <span>Profil</span>
+            <select id="profileList">
+              <option value="">— belum dipilih —</option>
+            </select>
+          </label>
+          <div class="row" style="margin-top: 9px">
+            <input id="profileName" type="text" class="grow" maxlength="32" placeholder="Nama profil" />
+            <button id="profileSave">Simpan</button>
+          </div>
+          <div class="row" style="margin-top: 6px">
+            <button id="profileApply" class="primary grow" disabled>Terapkan</button>
+            <button id="profileDelete" class="icon" title="Hapus profil" disabled>✕</button>
+          </div>
+          <p class="muted small">Profil menyimpan avatar, gambar latar, dan semua setelan sekaligus. Nama yang sama akan memperbarui profil lama. Maksimal 12 profil.</p>
+
+          <h3 style="margin-top: 18px">Preset</h3>
           <label class="select">
             <span>Preset</span>
             <select id="presetList">
@@ -205,7 +222,12 @@
             <button id="presetApply" class="primary grow" disabled>Terapkan</button>
             <button id="presetDelete" class="icon" title="Hapus preset" disabled>✕</button>
           </div>
-          <p class="muted small">Menyimpan framing, zoom, exposure, sensitivitas, smoothing, mirror, sumber mulut, gain mic, FPS, render scale, rate tracking, dan pilihan latar. File gambar dan avatar tidak ikut.</p>
+          <div class="row" style="margin-top: 6px">
+            <button id="presetExport" class="grow">Ekspor JSON</button>
+            <button id="presetImport" class="grow">Impor JSON</button>
+            <input id="presetFile" type="file" accept="application/json,.json" hidden />
+          </div>
+          <p class="muted small">Preset menyimpan framing, zoom, exposure, sensitivitas, smoothing, mirror, sumber mulut, gain mic, FPS, render scale, rate tracking, dan pilihan latar. File gambar dan avatar tidak ikut. Ekspor/impor berguna untuk memindahkan preset ke browser atau PC lain.</p>
         </section>
 
       </div>

@@ -68,10 +68,25 @@ server, jadi tidak perlu upload ulang.
 | **Avatar** | Pilih/ganti avatar, hapus avatar tersimpan (tombol `✕`). |
 | **Wajah** | Aktifkan kamera, kalibrasi, sensitivitas, smoothing, mirror, balik X/Y/Z, prosesor tracking (GPU/CPU), dan on/off fitur (kepala, mata, kedip, ekspresi, idle, fisika rambut). |
 | **Mulut** | Aktifkan mic, sumber gerak mulut, sensitivitas mic, level mic, tes gerak mulut, kedip otomatis. |
-| **Tampilan** | Latar (transparan/green/blue/gambar), framing, zoom, exposure, batas FPS, kualitas render, kualitas otomatis, rate tracking, preset, dan tombol **Salin URL untuk OBS**. |
+| **Tampilan** | Latar (transparan/green/blue/gambar), framing, zoom, exposure, batas FPS, kualitas render, kualitas otomatis, rate tracking, profil, preset, dan tombol **Salin URL untuk OBS**. |
 
 Tombol `–` di kanan atas menyembunyikan panel; tekan `H` untuk memunculkannya lagi. Status bar di
 bawah panel menampilkan status kamera, wajah, mic, dan versi app yang sedang dipakai.
+
+### Profil lengkap
+
+Profil menyimpan avatar, gambar latar, dan semua setelan sebagai satu paket. Server menyalin file
+avatar dan latar ke folder profil, jadi berpindah profil tidak perlu upload ulang.
+
+1. Atur avatar, latar, dan setelan seperti yang diinginkan.
+2. Di tab **Tampilan**, isi **Nama profil**, lalu klik **Simpan**.
+3. Untuk berpindah, pilih profil di dropdown lalu klik **Terapkan**.
+4. Untuk menghapus profil beserta salinan asetnya, pilih profil lalu klik `✕` dan konfirmasi.
+
+Nama yang sama akan memperbarui profil lama. Maksimal 12 profil. Profil disimpan di folder data
+server (`data/profiles/` atau `%APPDATA%\app.litetuber.desktop\profiles\`), bukan di
+`localStorage`, jadi profil ikut terbawa selama folder data yang sama dipakai. Profil yang dibuat
+sebelum fitur ini ada tidak otomatis dibuatkan; simpan sekali dari kondisi saat ini.
 
 ### Preset setelan
 
@@ -88,6 +103,10 @@ Nama yang sama akan memperbarui preset lama, bukan membuat duplikat. Preset disi
 `localStorage` browser, bukan di folder data server, jadi tidak ikut terbawa saat pindah komputer.
 Avatar dan file gambar latar tidak disimpan di preset; preset hanya mengingat pilihan latarnya.
 Maksimal 24 preset.
+
+Preset bisa dipindah dengan **Ekspor JSON** dan **Impor JSON** di bagian Preset. Ekspor mengunduh
+satu file berisi semua preset. Impor menggabungkan isi file ke preset yang sudah ada: nama yang
+sama dilewati agar preset lokal tidak tertimpa, dan sisanya ditambahkan sampai batas 24.
 
 ## 4. Memasang di OBS
 

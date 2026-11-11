@@ -14,6 +14,9 @@ const dataDir = path.join(here, "data");
 const statePath = path.join(dataDir, "state.json");
 const avatarPath = path.join(dataDir, "avatar.vrm");
 const bgPath = path.join(dataDir, "background.json");
+const profilesDir = path.join(dataDir, "profiles");
+const MAX_PROFILES = 12;
+const MAX_PROFILE_NAME = 32;
 const port = Number(process.env.PORT || 8770);
 
 // The server is local-only, but any website open in the same browser can still
@@ -43,6 +46,7 @@ function originAllowed(req) {
 
 
 fs.mkdirSync(dataDir, { recursive: true });
+fs.mkdirSync(profilesDir, { recursive: true });
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -187,6 +191,131 @@ async function statInfo(file) {
   }
 }
 
+/* ---------- profiles ---------- */
+// A profile is a directory with its own avatar/background copies plus the
+// settings snapshot, so switching profiles never needs another upload. The
+// active files at the data root stay the ones the existing endpoints serve.
+
+function normalizeProfileName(value) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_PROFILE_NAME);
+}
+
+function profileIdValid(id) {
+  return /^[a-z0-9]{6,40}$/.test(id);
+}
+
+function newProfileId() {
+  return `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+async function writeJsonAtomic(file, value) {
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+  await fsp.writeFile(tmp, JSON.stringify(value, null, 2));
+  await fsp.rename(tmp, file);
+}
+
+async function copyIfExists(src, dest) {
+  const info = await statInfo(src);
+  if (!info.exists) {
+    await fsp.rm(dest, { force: true });
+    return;
+  }
+  const tmp = `${dest}.part`;
+  await fsp.copyFile(src, tmp);
+  await fsp.rename(tmp, dest);
+}
+
+async function readProfileMeta(id) {
+  if (!profileIdValid(id)) return null;
+  try {
+    const raw = await fsp.readFile(path.join(profilesDir, id, "profile.json"), "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const name = normalizeProfileName(parsed.name);
+    if (!name) return null;
+    return { ...parsed, id, name };
+  } catch {
+    return null;
+  }
+}
+
+async function profileSummary(meta) {
+  const dir = path.join(profilesDir, meta.id);
+  const avatar = await statInfo(path.join(dir, "avatar.vrm"));
+  const bg = await statInfo(path.join(dir, "background.json"));
+  return {
+    id: meta.id,
+    name: meta.name,
+    avatarName: typeof meta.avatarName === "string" ? meta.avatarName : "",
+    hasAvatar: avatar.exists,
+    hasBackground: bg.exists,
+    createdAt: Number.isFinite(meta.createdAt) ? meta.createdAt : 0,
+    updatedAt: Number.isFinite(meta.updatedAt) ? meta.updatedAt : 0,
+  };
+}
+
+async function listProfiles() {
+  let entries = [];
+  try {
+    entries = await fsp.readdir(profilesDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !profileIdValid(entry.name)) continue;
+    const meta = await readProfileMeta(entry.name);
+    if (meta) out.push(await profileSummary(meta));
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name, "id"));
+  return out;
+}
+
+async function snapshotProfile(name) {
+  const profiles = await listProfiles();
+  const key = name.toLowerCase();
+  const existing = profiles.find((profile) => profile.name.toLowerCase() === key);
+  if (!existing && profiles.length >= MAX_PROFILES) {
+    throw Object.assign(new Error(`Profil penuh (maksimal ${MAX_PROFILES}).`), { code: 409 });
+  }
+  const id = existing?.id || newProfileId();
+  const dir = path.join(profilesDir, id);
+  await fsp.mkdir(dir, { recursive: true });
+  const state = await readState();
+  // Copy first, write metadata last: a half-copied profile stays invisible.
+  await copyIfExists(avatarPath, path.join(dir, "avatar.vrm"));
+  await copyIfExists(bgPath, path.join(dir, "background.json"));
+  const now = Date.now();
+  const meta = {
+    id,
+    name,
+    settings: state.settings || null,
+    avatarName: state.avatarName || "",
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  };
+  await writeJsonAtomic(path.join(dir, "profile.json"), meta);
+  return { profile: await profileSummary(meta), replaced: Boolean(existing) };
+}
+
+async function applyProfile(id) {
+  const meta = await readProfileMeta(id);
+  if (!meta) throw Object.assign(new Error("Profil tidak ditemukan."), { code: 404 });
+  const dir = path.join(profilesDir, id);
+  await copyIfExists(path.join(dir, "avatar.vrm"), avatarPath);
+  await copyIfExists(path.join(dir, "background.json"), bgPath);
+  await updateState((state) => {
+    if (meta.settings && typeof meta.settings === "object") state.settings = meta.settings;
+    state.avatarName = typeof meta.avatarName === "string" ? meta.avatarName : "";
+    return state;
+  });
+  dataRevision++;
+  return meta;
+}
+
 async function handleApi(req, res, pathname, query) {
   if (pathname === "/api/state" && req.method === "GET") {
     const avatar = await statInfo(avatarPath);
@@ -299,6 +428,48 @@ async function handleApi(req, res, pathname, query) {
     await fsp.rm(bgPath, { force: true });
     dataRevision++;
     sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  if (pathname === "/api/profiles" && req.method === "GET") {
+    sendJson(res, 200, { profiles: await listProfiles() });
+    return true;
+  }
+
+  if (pathname === "/api/profiles" && req.method === "POST") {
+    try {
+      const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
+      const name = normalizeProfileName(body.name);
+      if (!name) throw Object.assign(new Error("Nama profil wajib diisi."), { code: 400 });
+      sendJson(res, 200, { ok: true, ...(await snapshotProfile(name)) });
+    } catch (err) {
+      const code = err.code === 409 || err.code === 413 ? err.code : 400;
+      sendJson(res, code, { error: String(err.message || err) });
+    }
+    return true;
+  }
+
+  const profileMatch = pathname.match(/^\/api\/profiles\/([a-z0-9]{6,40})$/);
+  if (profileMatch && req.method === "DELETE") {
+    const id = profileMatch[1];
+    const meta = await readProfileMeta(id);
+    if (!meta) {
+      sendJson(res, 404, { error: "Profil tidak ditemukan." });
+      return true;
+    }
+    await fsp.rm(path.join(profilesDir, id), { recursive: true, force: true });
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+
+  const applyMatch = pathname.match(/^\/api\/profiles\/([a-z0-9]{6,40})\/apply$/);
+  if (applyMatch && req.method === "POST") {
+    try {
+      const meta = await applyProfile(applyMatch[1]);
+      sendJson(res, 200, { ok: true, id: meta.id, name: meta.name });
+    } catch (err) {
+      sendJson(res, err.code === 404 ? 404 : 500, { error: String(err.message || err) });
+    }
     return true;
   }
 

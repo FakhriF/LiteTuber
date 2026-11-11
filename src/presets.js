@@ -18,6 +18,8 @@ export const PRESET_FIELDS = Object.freeze([
 
 export const MAX_PRESETS = 24;
 export const MAX_PRESET_NAME = 32;
+export const PRESET_FILE_FORMAT = "litetuber.presets";
+export const PRESET_FILE_VERSION = 1;
 
 function isScalar(value) {
   return typeof value === "string" || typeof value === "boolean" || Number.isFinite(value);
@@ -94,4 +96,45 @@ export function mergePreset(settings, preset) {
   const clean = sanitizePreset(preset);
   if (!clean) return { ...settings };
   return { ...settings, ...clean.settings };
+}
+
+// The exported object carries a format marker so a future version can change the
+// shape without silently importing the wrong JSON file.
+export function exportPresets(list, now = Date.now()) {
+  return {
+    format: PRESET_FILE_FORMAT,
+    version: PRESET_FILE_VERSION,
+    exportedAt: new Date(now).toISOString(),
+    presets: sanitizePresets(list),
+  };
+}
+
+// Import merges instead of replacing. An existing name wins, so a file from
+// another PC cannot overwrite local presets by accident.
+export function importPresets(list, payload) {
+  const current = sanitizePresets(list);
+  const incoming = sanitizePresets(Array.isArray(payload) ? payload : payload?.presets);
+  if (!incoming.length) {
+    return { presets: current, added: 0, skipped: 0, dropped: 0, error: "File tidak berisi preset valid." };
+  }
+  const names = new Set(current.map((preset) => preset.name.toLowerCase()));
+  const merged = [...current];
+  let added = 0;
+  let skipped = 0;
+  let dropped = 0;
+  for (const preset of incoming) {
+    const key = preset.name.toLowerCase();
+    if (names.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    if (merged.length >= MAX_PRESETS) {
+      dropped += 1;
+      continue;
+    }
+    names.add(key);
+    merged.push(preset);
+    added += 1;
+  }
+  return { presets: merged, added, skipped, dropped };
 }

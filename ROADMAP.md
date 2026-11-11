@@ -14,17 +14,17 @@ sesuai laporan bug dan kebutuhan pengguna.
   detik), pindah ke device default saat device hilang, dan status mic suspended bisa di-resume.
 - Preset setelan: simpan kombinasi setelan dengan nama, lalu terapkan atau hapus dari tab Tampilan.
   Avatar dan file background tidak ikut disalin.
+- Ekspor/impor preset sebagai JSON, sehingga preset bisa dipindah ke browser atau PC lain.
+- Profil lengkap: avatar, gambar latar, dan setelan disimpan sebagai satu profil dengan salinan
+  aset di server. Terapkan profil untuk berpindah tanpa upload avatar lagi. Maksimal 12 profil.
 - Test Vitest dan Rust, plus CI Linux dan Windows.
 
 ## v0.3
 
 - **Portable ZIP.** Versi tanpa installer. Data tetap di `%APPDATA%`; mode benar-benar portable
   (data di sebelah `.exe`) diputuskan terpisah karena mengubah cara server mencari folder data.
-- **Profil lengkap.** Simpan kombinasi avatar, background, dan setelan, lalu pindah tanpa mengatur
-  ulang. Server sekarang hanya menyimpan satu `avatar.vrm` dan satu `background.json`, jadi profil
-  yang mengganti avatar butuh salinan aset per profil, endpoint baru, dan migrasi data lama.
-  Preset setelan tanpa aset sudah tersedia; ini melanjutkannya ke salinan aset.
-- **Pisah `main.js`.** Pecah loop render, sinkronisasi, dan UI. Tidak ada perubahan perilaku.
+- **Pisah `main.js`.** Pecah loop render, sinkronisasi, dan UI. Bagian profil sudah dipindah ke
+  modul sendiri; presets dan sisa UI menyusul tanpa perubahan perilaku.
 
 ## Rencana lanjutan
 

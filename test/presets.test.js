@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   MAX_PRESETS,
   deletePreset,
+  exportPresets,
+  importPresets,
   mergePreset,
   normalizeName,
   pickPreset,
@@ -160,6 +162,55 @@ describe("deletePreset and mergePreset", () => {
     const settings = { sens: 1 };
     expect(mergePreset(settings, null)).toEqual(settings);
     expect(mergePreset(settings, { name: "", settings: { sens: 2 } })).toEqual(settings);
+  });
+});
+
+describe("preset import and export", () => {
+  it("exports a versioned file with sanitized presets", () => {
+    const file = exportPresets(
+      [
+        { name: "  Siang  ", settings: { sens: 1.2, camDevice: "cam-1" } },
+        { name: "", settings: { sens: 2 } },
+      ],
+      0,
+    );
+    expect(file.format).toBe("litetuber.presets");
+    expect(file.version).toBe(1);
+    expect(file.exportedAt).toBe("1970-01-01T00:00:00.000Z");
+    expect(file.presets).toHaveLength(1);
+    expect(file.presets[0].name).toBe("Siang");
+    expect(file.presets[0].settings.camDevice).toBeUndefined();
+  });
+
+  it("imports new presets and keeps existing ones", () => {
+    const current = sanitizePresets([{ name: "Lokal", settings: { sens: 1 } }]);
+    const result = importPresets(current, {
+      presets: [
+        { name: "Impor", settings: { sens: 1.5 } },
+        { name: "Lokal", settings: { sens: 9 } },
+      ],
+    });
+    expect(result.added).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(result.presets.map((preset) => preset.name)).toEqual(["Lokal", "Impor"]);
+    expect(result.presets[0].settings.sens).toBe(1);
+  });
+
+  it("accepts a bare array and rejects files with no valid preset", () => {
+    expect(importPresets([], [{ name: "A", settings: { zoom: 2 } }]).added).toBe(1);
+    const empty = importPresets([], { presets: [] });
+    expect(empty.error).toBeTruthy();
+    expect(empty.presets).toEqual([]);
+  });
+
+  it("respects the preset limit while importing", () => {
+    const current = sanitizePresets(
+      Array.from({ length: MAX_PRESETS }, (_, i) => ({ name: `P${i}`, settings: { zoom: 1 } })),
+    );
+    const result = importPresets(current, { presets: [{ name: "Baru", settings: { zoom: 2 } }] });
+    expect(result.added).toBe(0);
+    expect(result.dropped).toBe(1);
+    expect(result.presets).toHaveLength(MAX_PRESETS);
   });
 });
 

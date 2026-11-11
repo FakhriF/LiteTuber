@@ -10,14 +10,14 @@ use std::{
         atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
-    time::{Duration, Instant, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use axum::{
     body::{Body, Bytes},
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        DefaultBodyLimit, Query, State,
+        DefaultBodyLimit, Path as AxumPath, Query, State,
     },
     http::{header, HeaderMap, HeaderName, HeaderValue, Method, Request, StatusCode, Uri},
     middleware::{self, Next},
@@ -40,6 +40,9 @@ pub const PORT: u16 = 8770;
 const MAX_AVATAR_BYTES: u64 = 300 * 1024 * 1024;
 const MAX_BACKGROUND_BYTES: usize = 25 * 1024 * 1024;
 const MAX_STATE_BYTES: usize = 1024 * 1024;
+const MAX_PROFILE_BODY_BYTES: usize = 4 * 1024;
+const MAX_PROFILES: usize = 12;
+const MAX_PROFILE_NAME: usize = 32;
 const MAX_WS_BYTES: usize = 16 * 1024;
 
 #[derive(RustEmbed)]
@@ -129,6 +132,12 @@ fn router(state: Arc<AppState>) -> Router {
             get(get_background)
                 .put(put_background)
                 .delete(delete_background),
+        )
+        .route("/api/profiles", get(list_profiles).post(create_profile))
+        .route("/api/profiles/{id}", axum::routing::delete(delete_profile))
+        .route(
+            "/api/profiles/{id}/apply",
+            axum::routing::post(apply_profile),
         )
         .route("/ws/pose", get(ws_pose))
         .fallback(static_handler)
@@ -702,6 +711,329 @@ async fn delete_background(State(state): State<Arc<AppState>>) -> Response {
     json_response(StatusCode::OK, json!({ "ok": true }), &[])
 }
 
+/* ---------- profiles ---------- */
+// A profile is a directory with its own avatar/background copies plus a
+// settings snapshot. The active files at the data root stay the ones the
+// existing endpoints serve.
+
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+struct ProfileMeta {
+    #[serde(default)]
+    id: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    settings: Option<Value>,
+    #[serde(default, rename = "avatarName")]
+    avatar_name: String,
+    #[serde(default, rename = "createdAt")]
+    created_at: u64,
+    #[serde(default, rename = "updatedAt")]
+    updated_at: u64,
+}
+
+fn profiles_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("profiles")
+}
+
+fn normalize_profile_name(value: &str) -> String {
+    let mut name = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    if name.chars().count() > MAX_PROFILE_NAME {
+        name = name.chars().take(MAX_PROFILE_NAME).collect();
+    }
+    name
+}
+
+fn profile_id_valid(id: &str) -> bool {
+    (6..=40).contains(&id.len())
+        && id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit())
+}
+
+fn new_profile_id() -> String {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    format!("p{:x}{:x}", ms, COUNTER.fetch_add(1, Ordering::Relaxed))
+}
+
+async fn read_profile_meta(data_dir: &Path, id: &str) -> Option<ProfileMeta> {
+    if !profile_id_valid(id) {
+        return None;
+    }
+    let path = profiles_dir(data_dir).join(id).join("profile.json");
+    let raw = tokio::fs::read_to_string(path).await.ok()?;
+    let mut meta: ProfileMeta = serde_json::from_str(&raw).ok()?;
+    meta.id = id.to_string();
+    meta.name = normalize_profile_name(&meta.name);
+    if meta.name.is_empty() {
+        return None;
+    }
+    Some(meta)
+}
+
+async fn profile_summary(data_dir: &Path, meta: &ProfileMeta) -> Value {
+    let dir = profiles_dir(data_dir).join(&meta.id);
+    let avatar = stat_info(&dir.join("avatar.vrm")).await;
+    let bg = stat_info(&dir.join("background.json")).await;
+    json!({
+        "id": meta.id,
+        "name": meta.name,
+        "avatarName": meta.avatar_name,
+        "hasAvatar": avatar.exists,
+        "hasBackground": bg.exists,
+        "createdAt": meta.created_at,
+        "updatedAt": meta.updated_at,
+    })
+}
+
+async fn all_profiles(data_dir: &Path) -> Vec<Value> {
+    let mut out = Vec::new();
+    let mut entries = match tokio::fs::read_dir(profiles_dir(data_dir)).await {
+        Ok(entries) => entries,
+        Err(_) => return out,
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let Ok(file_type) = entry.file_type().await else {
+            continue;
+        };
+        if !file_type.is_dir() {
+            continue;
+        }
+        let Some(id) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if let Some(meta) = read_profile_meta(data_dir, &id).await {
+            out.push(profile_summary(data_dir, &meta).await);
+        }
+    }
+    out.sort_by(|a, b| {
+        let left = a.get("name").and_then(Value::as_str).unwrap_or("");
+        let right = b.get("name").and_then(Value::as_str).unwrap_or("");
+        left.to_lowercase().cmp(&right.to_lowercase())
+    });
+    out
+}
+
+async fn copy_if_exists(src: &Path, dest: &Path) -> Result<(), String> {
+    if tokio::fs::metadata(src).await.is_err() {
+        let _ = tokio::fs::remove_file(dest).await;
+        return Ok(());
+    }
+    let tmp = tmp_path(dest);
+    if let Err(err) = tokio::fs::copy(src, &tmp).await {
+        let _ = tokio::fs::remove_file(&tmp).await;
+        return Err(err.to_string());
+    }
+    if let Err(err) = tokio::fs::rename(&tmp, dest).await {
+        let _ = tokio::fs::remove_file(&tmp).await;
+        return Err(err.to_string());
+    }
+    Ok(())
+}
+
+async fn snapshot_profile(
+    state: &AppState,
+    name: &str,
+) -> Result<(Value, bool), (StatusCode, String)> {
+    // Hold the write lock so the settings snapshot and asset copies match.
+    let _guard = state.write_lock.lock().await;
+    let existing = all_profiles(&state.data_dir)
+        .await
+        .into_iter()
+        .find(|profile| {
+            profile
+                .get("name")
+                .and_then(Value::as_str)
+                .map(|value| value.eq_ignore_ascii_case(name))
+                .unwrap_or(false)
+        });
+
+    if existing.is_none() && all_profiles(&state.data_dir).await.len() >= MAX_PROFILES {
+        return Err((
+            StatusCode::CONFLICT,
+            format!("Profil penuh (maksimal {MAX_PROFILES})."),
+        ));
+    }
+
+    let (id, created_at) = match &existing {
+        Some(profile) => (
+            profile
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            profile
+                .get("createdAt")
+                .and_then(Value::as_u64)
+                .unwrap_or_default(),
+        ),
+        None => (new_profile_id(), 0),
+    };
+
+    let dir = profiles_dir(&state.data_dir).join(&id);
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    copy_if_exists(&state.data_dir.join("avatar.vrm"), &dir.join("avatar.vrm"))
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err))?;
+    copy_if_exists(
+        &state.data_dir.join("background.json"),
+        &dir.join("background.json"),
+    )
+    .await
+    .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err))?;
+
+    let disk = read_state(&state.data_dir).await;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let meta = ProfileMeta {
+        id: id.clone(),
+        name: name.to_string(),
+        settings: disk.settings,
+        avatar_name: disk.avatar_name,
+        created_at: if created_at == 0 { now } else { created_at },
+        updated_at: now,
+    };
+    let body = serde_json::to_vec_pretty(&meta)
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+    write_data_file(&dir.join("profile.json"), body)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err))?;
+
+    let summary = profile_summary(&state.data_dir, &meta).await;
+    Ok((summary, existing.is_some()))
+}
+
+async fn list_profiles(State(state): State<Arc<AppState>>) -> Response {
+    json_response(
+        StatusCode::OK,
+        json!({ "profiles": all_profiles(&state.data_dir).await }),
+        &[],
+    )
+}
+
+async fn create_profile(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+    if body.len() > MAX_PROFILE_BODY_BYTES {
+        return json_response(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            json!({ "error": "permintaan terlalu besar" }),
+            &[],
+        );
+    }
+    let parsed: Value = match serde_json::from_slice(&body) {
+        Ok(value) => value,
+        Err(err) => {
+            return json_response(
+                StatusCode::BAD_REQUEST,
+                json!({ "error": err.to_string() }),
+                &[],
+            )
+        }
+    };
+    let name = normalize_profile_name(parsed.get("name").and_then(Value::as_str).unwrap_or(""));
+    if name.is_empty() {
+        return json_response(
+            StatusCode::BAD_REQUEST,
+            json!({ "error": "Nama profil wajib diisi." }),
+            &[],
+        );
+    }
+    match snapshot_profile(&state, &name).await {
+        Ok((profile, replaced)) => json_response(
+            StatusCode::OK,
+            json!({ "ok": true, "profile": profile, "replaced": replaced }),
+            &[],
+        ),
+        Err((status, message)) => json_response(status, json!({ "error": message }), &[]),
+    }
+}
+
+async fn delete_profile(
+    State(state): State<Arc<AppState>>,
+    AxumPath(id): AxumPath<String>,
+) -> Response {
+    if read_profile_meta(&state.data_dir, &id).await.is_none() {
+        return json_response(
+            StatusCode::NOT_FOUND,
+            json!({ "error": "Profil tidak ditemukan." }),
+            &[],
+        );
+    }
+    if let Err(err) = tokio::fs::remove_dir_all(profiles_dir(&state.data_dir).join(&id)).await {
+        return json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "error": err.to_string() }),
+            &[],
+        );
+    }
+    json_response(StatusCode::OK, json!({ "ok": true }), &[])
+}
+
+async fn apply_profile(
+    State(state): State<Arc<AppState>>,
+    AxumPath(id): AxumPath<String>,
+) -> Response {
+    let Some(meta) = read_profile_meta(&state.data_dir, &id).await else {
+        return json_response(
+            StatusCode::NOT_FOUND,
+            json!({ "error": "Profil tidak ditemukan." }),
+            &[],
+        );
+    };
+    let dir = profiles_dir(&state.data_dir).join(&id);
+    if let Err(err) =
+        copy_if_exists(&dir.join("avatar.vrm"), &state.data_dir.join("avatar.vrm")).await
+    {
+        return json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "error": err }),
+            &[],
+        );
+    }
+    if let Err(err) = copy_if_exists(
+        &dir.join("background.json"),
+        &state.data_dir.join("background.json"),
+    )
+    .await
+    {
+        return json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "error": err }),
+            &[],
+        );
+    }
+    if let Err(err) = update_state(&state, |disk| {
+        if let Some(settings) = &meta.settings {
+            if settings.is_object() {
+                disk.settings = Some(settings.clone());
+            }
+        }
+        disk.avatar_name = meta.avatar_name.clone();
+    })
+    .await
+    {
+        return json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "error": err }),
+            &[],
+        );
+    }
+    state.revision.fetch_add(1, Ordering::SeqCst);
+    json_response(
+        StatusCode::OK,
+        json!({ "ok": true, "id": meta.id, "name": meta.name }),
+        &[],
+    )
+}
+
 /* ---------- live pose relay ---------- */
 
 async fn ws_pose(
@@ -976,6 +1308,143 @@ mod tests {
             let (status, _, _) =
                 call(&app, request(Method::GET, "/api/background", Body::empty())).await;
             assert_eq!(status, StatusCode::NOT_FOUND);
+        });
+    }
+
+    #[test]
+    fn profile_round_trip_copies_assets_and_settings() {
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        runtime.block_on(async {
+            let (app, _dir) = app();
+
+            let (status, _, _) = call(
+                &app,
+                request(
+                    Method::PUT,
+                    "/api/state",
+                    Body::from(r#"{"settings":{"zoom":1.25}}"#),
+                ),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+
+            let valid = glb(br#"{"extensions":{"VRMC_vrm":{"meta":{}}}}"#);
+            let (status, _, _) = call(
+                &app,
+                request(Method::PUT, "/api/avatar?name=ok.vrm", Body::from(valid)),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+            let (status, _, _) = call(
+                &app,
+                request(
+                    Method::PUT,
+                    "/api/background",
+                    Body::from(r#"{"dataUrl":"data:image/png;base64,AAAA"}"#),
+                ),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+
+            let (status, _, body) = call(
+                &app,
+                request(
+                    Method::POST,
+                    "/api/profiles",
+                    Body::from(r#"{"name":"Siang"}"#),
+                ),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+            let created: Value = serde_json::from_slice(&body).expect("profile json");
+            let id = created
+                .pointer("/profile/id")
+                .and_then(Value::as_str)
+                .expect("profile id")
+                .to_string();
+
+            let (status, _, body) =
+                call(&app, request(Method::GET, "/api/profiles", Body::empty())).await;
+            assert_eq!(status, StatusCode::OK);
+            let listed: Value = serde_json::from_slice(&body).expect("list json");
+            assert_eq!(
+                listed.pointer("/profiles/0/name").and_then(Value::as_str),
+                Some("Siang")
+            );
+            assert_eq!(
+                listed
+                    .pointer("/profiles/0/hasAvatar")
+                    .and_then(Value::as_bool),
+                Some(true)
+            );
+
+            // Change the active state, then applying the profile must restore it.
+            let (status, _, _) = call(
+                &app,
+                request(
+                    Method::PUT,
+                    "/api/state",
+                    Body::from(r#"{"settings":{"zoom":2.0}}"#),
+                ),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+            let (status, _, _) =
+                call(&app, request(Method::DELETE, "/api/avatar", Body::empty())).await;
+            assert_eq!(status, StatusCode::OK);
+            let (status, _, _) = call(
+                &app,
+                request(Method::DELETE, "/api/background", Body::empty()),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+
+            let (status, _, _) = call(
+                &app,
+                request(
+                    Method::POST,
+                    &format!("/api/profiles/{id}/apply"),
+                    Body::empty(),
+                ),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+
+            let (status, _, body) =
+                call(&app, request(Method::GET, "/api/state", Body::empty())).await;
+            assert_eq!(status, StatusCode::OK);
+            let state: Value = serde_json::from_slice(&body).expect("state json");
+            assert_eq!(
+                state.pointer("/settings/zoom").and_then(Value::as_f64),
+                Some(1.25)
+            );
+            assert_eq!(
+                state.get("avatarExists").and_then(Value::as_bool),
+                Some(true)
+            );
+            assert_eq!(state.get("bgExists").and_then(Value::as_bool), Some(true));
+
+            let (status, _, _) = call(
+                &app,
+                request(
+                    Method::DELETE,
+                    &format!("/api/profiles/{id}"),
+                    Body::empty(),
+                ),
+            )
+            .await;
+            assert_eq!(status, StatusCode::OK);
+            let (status, _, body) =
+                call(&app, request(Method::GET, "/api/profiles", Body::empty())).await;
+            assert_eq!(status, StatusCode::OK);
+            let listed: Value = serde_json::from_slice(&body).expect("empty list json");
+            assert_eq!(
+                listed
+                    .get("profiles")
+                    .and_then(Value::as_array)
+                    .map(Vec::len),
+                Some(0)
+            );
         });
     }
 

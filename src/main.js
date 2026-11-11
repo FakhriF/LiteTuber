@@ -7,7 +7,8 @@ import { PoseSync } from "./pose-sync.js";
 import { inspectVrm } from "./vrm.js";
 import { RetryLoop, isFatalMediaError } from "./recovery.js";
 import * as store from "./store.js";
-import { deletePreset, mergePreset, normalizeName, savePreset } from "./presets.js";
+import { deletePreset, exportPresets, importPresets, mergePreset, normalizeName, savePreset } from "./presets.js";
+import { setupProfiles } from "./profiles.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -222,11 +223,16 @@ async function getServerState() {
   }
 }
 
+function settingsPayload() {
+  const payload = { ...settings };
+  delete payload.panelHidden;
+  return payload;
+}
+
 function pushSettings() {
   if (applyingServer) return;
   clearTimeout(pushTimer);
-  const payload = { ...settings };
-  delete payload.panelHidden;
+  const payload = settingsPayload();
   pushTimer = setTimeout(() => {
     fetch("/api/state", {
       method: "PUT",
@@ -234,6 +240,21 @@ function pushSettings() {
       body: JSON.stringify({ settings: payload }),
     }).catch(() => {});
   }, 350);
+}
+
+// Profiles snapshot the server state, so the debounced save must land first.
+async function flushSettings() {
+  clearTimeout(pushTimer);
+  if (applyingServer) return;
+  try {
+    await fetch("/api/state", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ settings: settingsPayload() }),
+    });
+  } catch {
+    /* the profile request will report a server problem */
+  }
 }
 
 function applyServerSettings(incoming) {
@@ -318,10 +339,40 @@ async function pollServer() {
     if (!state) return;
     if (state.settings) applyServerSettings(state.settings);
     if (state.bgExists && state.bgMtime !== serverBgMtime) await loadServerBackground(state);
+    else if (!state.bgExists && serverBgMtime !== 0) {
+      $("bgImage").style.backgroundImage = "";
+      serverBgMtime = 0;
+    }
     if (!avatarBusy && state.avatarExists && state.avatarMtime !== serverAvatarMtime)
       await loadServerAvatar(state);
+    else if (!avatarBusy && !state.avatarExists && serverAvatarMtime !== 0) {
+      await switchToPlaceholder();
+      serverAvatarMtime = 0;
+    }
   } finally {
     polling = false;
+  }
+}
+
+// A profile apply swaps the active avatar, background, and settings on the
+// server. Drop the cached ETag/mtimes so the next poll loads everything.
+async function reloadFromServer() {
+  clearTimeout(pushTimer);
+  serverStateEtag = "";
+  serverAvatarMtime = 0;
+  serverBgMtime = 0;
+  const state = await getServerState();
+  if (!state) return;
+  if (state.settings) applyServerSettings(state.settings);
+  if (state.bgExists) {
+    await loadServerBackground(state);
+  } else {
+    $("bgImage").style.backgroundImage = "";
+  }
+  if (state.avatarExists) {
+    await loadServerAvatar(state);
+  } else {
+    await switchToPlaceholder();
   }
 }
 
@@ -971,7 +1022,54 @@ $("presetDelete").addEventListener("click", () => {
   toast(`Preset "${name}" dihapus`);
 });
 
+$("presetExport").addEventListener("click", () => {
+  if (!presets.length) {
+    toast("Belum ada preset untuk diekspor.");
+    return;
+  }
+  const file = exportPresets(presets);
+  const blob = new Blob([JSON.stringify(file, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `litetuber-preset-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`${file.presets.length} preset diekspor`);
+});
+
+$("presetImport").addEventListener("click", () => $("presetFile").click());
+$("presetFile").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+  let payload;
+  try {
+    payload = JSON.parse(await file.text());
+  } catch {
+    toast("File bukan JSON yang valid.");
+    return;
+  }
+  const result = importPresets(presets, payload);
+  if (result.error) {
+    toast(result.error);
+    return;
+  }
+  if (!store.savePresets(result.presets)) {
+    toast("Preset gagal disimpan. Penyimpanan browser penuh?");
+    return;
+  }
+  presets = result.presets;
+  renderPresetOptions("");
+  const parts = [`${result.added} preset diimpor`];
+  if (result.skipped) parts.push(`${result.skipped} dilewati karena nama sudah ada`);
+  if (result.dropped) parts.push(`${result.dropped} tidak muat (maksimal 24)`);
+  toast(parts.join(", "), 4200);
+});
+
 renderPresetOptions("");
+
+setupProfiles({ $, toast, flushSettings, reloadFromServer });
 
 $("obsBtn").addEventListener("click", async () => {
   const url = `${location.origin}${location.pathname}?ui=0`;

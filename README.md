@@ -63,15 +63,18 @@ Setelah update, klik kanan source OBS lalu **Refresh**. URL-nya tidak berubah.
 - Penyesuaian kualitas berdasarkan FPS.
 - Pemulihan kamera dan mic setelah device putus atau berganti.
 - Preset setelan: simpan kombinasi framing, kualitas, dan latar dengan nama.
+- Profil lengkap: simpan avatar, gambar latar, dan setelan sekaligus, lalu pindah profil tanpa upload ulang.
+- Ekspor/impor preset sebagai JSON untuk memindahkannya ke browser atau PC lain.
 - Upload avatar dengan validasi dan progres; avatar lama tidak rusak kalau file ditolak.
-- Setelan dan preset disimpan lokal dan dipakai lagi oleh OBS.
+- Setelan, preset, dan profil disimpan lokal dan dipakai lagi oleh OBS.
 
 ## Data
 
 Mode browser menyimpan data di folder `data/`. Mode desktop menyimpan di
 `%APPDATA%\app.litetuber.desktop\`. OBS mengambil avatar dari server yang sama, jadi tidak ada
-salinan terpisah. Update installer tidak menghapus folder ini; jalankan installer baru tanpa
-uninstall.
+salinan terpisah. Setiap profil menyimpan salinan avatar dan latarnya di subfolder `profiles/`,
+sedangkan avatar dan latar yang sedang aktif tetap di root folder data. Update installer tidak
+menghapus folder ini; jalankan installer baru tanpa uninstall.
 
 Tombol `✕` di tab Avatar menghapus avatar yang tersimpan. Cara reset dan pindah komputer ada di
 [docs/PANDUAN.md](docs/PANDUAN.md).
