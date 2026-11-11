@@ -1,6 +1,7 @@
 # Roadmap
 
-Status per November 2026. Ini rencana kerja, bukan jadwal rilis.
+Status per November 2026. Dokumen ini berisi rencana kerja, bukan jadwal rilis. Urutan dapat berubah
+sesuai laporan bug dan kebutuhan pengguna.
 
 ## Sudah ada
 
@@ -13,24 +14,25 @@ Status per November 2026. Ini rencana kerja, bukan jadwal rilis.
 
 ## v0.2: reliability kamera dan mic
 
-Tujuan: stream tidak berhenti gara-gara device bermasalah. Tidak ada fitur baru di rilis ini.
+Tujuan: tracking tetap berjalan dan status perangkat selalu jelas saat kamera atau mic bermasalah.
+Tidak ada fitur baru di rilis ini.
 
-1. **Deteksi device putus.** Kalau track kamera atau mic berakhir (kabel dicabut, device dimatikan),
+1. **Deteksi device putus.** Jika track kamera atau mic berakhir (kabel dicabut, device dimatikan),
    status di panel berubah, avatar berhenti dengan rapi, dan muncul pesan yang jelas.
-2. **Pulih sendiri.** Coba sambung ulang maksimal 3 kali dengan jeda 2, 5, lalu 10 detik. Kalau
-   tetap gagal, berhenti dan tampilkan tombol coba lagi. Jangan retry terus-menerus saat izin
-   ditolak.
-3. **Device berubah.** `devicechange` memperbarui daftar kamera/mic. Kalau device yang sedang
-   dipakai hilang, pindah ke default dan beri tahu pengguna.
-4. **Mic suspended.** Kalau AudioContext di-suspend browser, tampilkan statusnya dan coba resume
-   saat panel diklik.
+2. **Pemulihan otomatis.** Sambung ulang maksimal 3 kali dengan jeda 2, 5, lalu 10 detik. Jika
+   masih gagal, proses berhenti dan panel menampilkan tombol coba lagi. Tidak ada percobaan ulang
+   berulang saat izin ditolak.
+3. **Perubahan device.** `devicechange` memperbarui daftar kamera dan mic. Jika device yang sedang
+   dipakai hilang, aplikasi berpindah ke device default dan menampilkan pemberitahuan.
+4. **Mic suspended.** Jika AudioContext di-suspend browser, statusnya ditampilkan dan resume
+   dicoba saat panel diklik.
 
 Kriteria selesai:
 
-- Cabut lalu pasang lagi webcam saat tracking jalan: avatar berhenti, lalu pulih tanpa reload.
-- Ganti mic saat aktif: gerak mulut mengikuti device baru.
-- Tolak izin kamera/mic: tidak ada retry berulang, pesan tetap jelas.
-- `npm test` dan `cargo test` lulus; ada test untuk logika recovery.
+- Webcam dicabut lalu dipasang kembali saat tracking berjalan: avatar berhenti, lalu pulih tanpa reload.
+- Mic diganti saat aktif: gerak mulut mengikuti device baru.
+- Izin kamera atau mic ditolak: tidak ada retry berulang dan pesan tetap jelas.
+- `npm test` dan `cargo test` lulus, termasuk test untuk logika pemulihan.
 
 ## v0.3
 
@@ -39,7 +41,7 @@ Kriteria selesai:
 - **Profil/preset.** Simpan kombinasi avatar dan setelan, lalu pindah tanpa mengatur ulang.
 - **Pisah `main.js`.** Pecah loop render, sinkronisasi, dan UI. Tidak ada perubahan perilaku.
 
-## Setelah itu
+## Rencana lanjutan
 
 - **MSIX dan Microsoft Store.** Cara termurah menghilangkan SmartScreen karena Store menandatangani
   ulang paketnya.
