@@ -10,32 +10,9 @@ sesuai laporan bug dan kebutuhan pengguna.
 - Avatar VRM 0.x dan 1.0, tracking wajah MediaPipe di Web Worker.
 - Relay pose ke OBS, jadi OBS hanya menampilkan.
 - Gerak mulut dari kamera/mic, adaptive quality, ETag, dan upload avatar dengan validasi.
+- Pemulihan kamera dan mic: track putus terdeteksi, sambung ulang otomatis 3 kali (jeda 2, 5, 10
+  detik), pindah ke device default saat device hilang, dan status mic suspended bisa di-resume.
 - Test Vitest dan Rust, plus CI Linux dan Windows.
-
-## v0.2: reliability kamera dan mic
-
-Lingkup rilis ini dibekukan: hanya pemulihan kamera/mic, tanpa fitur baru. Preset dan profil
-dikerjakan setelah rilis ini supaya build yang diuji di Windows tetap fokus pada satu perubahan.
-
-Tujuan: tracking tetap berjalan dan status perangkat selalu jelas saat kamera atau mic bermasalah.
-Tidak ada fitur baru di rilis ini.
-
-1. **Deteksi device putus.** Jika track kamera atau mic berakhir (kabel dicabut, device dimatikan),
-   status di panel berubah, avatar berhenti dengan rapi, dan muncul pesan yang jelas.
-2. **Pemulihan otomatis.** Sambung ulang maksimal 3 kali dengan jeda 2, 5, lalu 10 detik. Jika
-   masih gagal, proses berhenti dan panel menampilkan tombol coba lagi. Tidak ada percobaan ulang
-   berulang saat izin ditolak.
-3. **Perubahan device.** `devicechange` memperbarui daftar kamera dan mic. Jika device yang sedang
-   dipakai hilang, aplikasi berpindah ke device default dan menampilkan pemberitahuan.
-4. **Mic suspended.** Jika AudioContext di-suspend browser, statusnya ditampilkan dan resume
-   dicoba saat panel diklik.
-
-Kriteria selesai:
-
-- Webcam dicabut lalu dipasang kembali saat tracking berjalan: avatar berhenti, lalu pulih tanpa reload.
-- Mic diganti saat aktif: gerak mulut mengikuti device baru.
-- Izin kamera atau mic ditolak: tidak ada retry berulang dan pesan tetap jelas.
-- `npm test` dan `cargo test` lulus, termasuk test untuk logika pemulihan.
 
 ## v0.3
 
