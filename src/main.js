@@ -5,6 +5,7 @@ import { FaceTracker } from "./face.js";
 import { MicMouth } from "./audio.js";
 import { PoseSync } from "./pose-sync.js";
 import { inspectVrm } from "./vrm.js";
+import { RetryLoop, isFatalMediaError } from "./recovery.js";
 import * as store from "./store.js";
 
 const $ = (id) => document.getElementById(id);
@@ -112,6 +113,16 @@ scene.add(fillLight);
 let avatar = new PlaceholderAvatar(scene);
 const face = new FaceTracker();
 const mic = new MicMouth();
+
+const camRetry = new RetryLoop({
+  onExhausted: () =>
+    toast("Kamera belum bisa dipulihkan. Klik Aktifkan kamera untuk mencoba lagi.", 8000),
+});
+const micRetry = new RetryLoop({
+  onExhausted: () =>
+    toast("Mic belum bisa dipulihkan. Klik Aktifkan mic untuk mencoba lagi.", 8000),
+});
+let deviceChangeTimer = 0;
 
 const smoothW = {};
 const KEYS = [
@@ -437,7 +448,15 @@ async function onVrmFile(file) {
   await loadVrmBuffer(buffer, name);
 }
 
-async function startCamera(deviceId) {
+function cameraUiOff() {
+  $("camBtn").textContent = "Aktifkan kamera";
+  $("camBtn").classList.remove("on");
+  $("calBtn").disabled = true;
+  updateCamPreview();
+}
+
+async function startCamera(deviceId, { auto = false } = {}) {
+  if (face.running) return true;
   const slowHint = setTimeout(
     () => toast("Menunggu izin kamera… cek popup izin atau ikon kamera di address bar", 6000),
     3500,
@@ -455,25 +474,45 @@ async function startCamera(deviceId) {
     dismissHint();
     toast("Kamera aktif, menyiapkan model wajah…", 3000);
     await face.ensureLandmarker();
+    camRetry.reset();
     toast("Tracking wajah siap — klik Kalibrasi saat posisi netral");
+    return true;
   } catch (err) {
     clearTimeout(slowHint);
     console.error(err);
-    $("camBtn").textContent = "Aktifkan kamera";
-    $("camBtn").classList.remove("on");
-    updateCamPreview();
-    toast(mediaError(err, "kamera"), 7000);
+    face.stop();
+    cameraUiOff();
+    const fatal = isFatalMediaError(err);
+    if (fatal) camRetry.stop();
+    // During automatic recovery the retry loop owns the schedule and the
+    // final message; a manual start reports the error directly.
+    if (fatal || !auto) toast(mediaError(err, "kamera"), 7000);
+    else toast("Kamera belum tersedia. Mencoba lagi…", 3000);
+    return false;
   }
 }
 
-function stopCamera() {
+function beginCameraRecovery() {
+  if (camRetry.pending) return;
+  const delay = camRetry.schedule(() => startCamera(settings.camDevice || null, { auto: true }));
+  if (delay === null) {
+    toast("Kamera belum bisa dipulihkan. Klik Aktifkan kamera untuk mencoba lagi.", 8000);
+  }
+}
+
+function onCameraLost() {
+  cameraUiOff();
+  camStartedAt = 0;
+  toast("Kamera terputus. Mencoba menyambung ulang…", 5000);
+  beginCameraRecovery();
+}
+
+function stopCamera({ silent = false } = {}) {
+  camRetry.reset();
   face.stop();
   face.calibrated = false;
-  $("camBtn").textContent = "Aktifkan kamera";
-  $("camBtn").classList.remove("on");
-  $("calBtn").disabled = true;
-  updateCamPreview();
-  toast("Kamera dimatikan");
+  cameraUiOff();
+  if (!silent) toast("Kamera dimatikan");
 }
 
 function toggleCamera() {
@@ -510,29 +549,63 @@ function fillDevices(select, devices, fallbackLabel) {
   select.value = current || wanted || "";
 }
 
-async function toggleMic() {
-  if (mic.running) {
-    mic.stop();
-    micRunning = false;
-    $("micBtn").textContent = "Aktifkan mic";
-    $("micBtn").classList.remove("on");
-    return;
-  }
+function micUiOff() {
+  $("micBtn").textContent = "Aktifkan mic";
+  $("micBtn").classList.remove("on");
+}
+
+async function startMic(deviceId, { auto = false } = {}) {
+  if (mic.running) return true;
   try {
-    await mic.start(settings.micDevice || null);
+    await mic.start(deviceId || settings.micDevice || null);
     refreshDevices();
     micRunning = true;
     $("micBtn").textContent = "Matikan mic";
     $("micBtn").classList.add("on");
+    micRetry.reset();
     if (mic.suspended) {
       toast("Mic aktif — klik sekali di halaman supaya audio jalan");
     } else {
       toast("Mic aktif untuk gerak mulut");
     }
+    return true;
   } catch (err) {
     console.error(err);
-    toast(mediaError(err, "mic"), 7000);
+    micRunning = false;
+    mic.stop();
+    micUiOff();
+    const fatal = isFatalMediaError(err);
+    if (fatal) micRetry.stop();
+    if (fatal || !auto) toast(mediaError(err, "mic"), 7000);
+    else toast("Mic belum tersedia. Mencoba lagi…", 3000);
+    return false;
   }
+}
+
+function beginMicRecovery() {
+  if (micRetry.pending) return;
+  const delay = micRetry.schedule(() => startMic(settings.micDevice || null, { auto: true }));
+  if (delay === null) {
+    toast("Mic belum bisa dipulihkan. Klik Aktifkan mic untuk mencoba lagi.", 8000);
+  }
+}
+
+function onMicLost() {
+  micRunning = false;
+  micUiOff();
+  toast("Mic terputus. Mencoba menyambung ulang…", 5000);
+  beginMicRecovery();
+}
+
+async function toggleMic() {
+  if (mic.running) {
+    micRetry.reset();
+    mic.stop();
+    micRunning = false;
+    micUiOff();
+    return;
+  }
+  await startMic(settings.micDevice || null);
 }
 
 function calibrate() {
@@ -581,6 +654,49 @@ function commit() {
   pushSettings();
 }
 
+async function deviceListed(deviceId, kind) {
+  if (!deviceId) return true;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.some((d) => d.kind === kind && d.deviceId === deviceId);
+  } catch {
+    // Without a device list there is nothing better to fall back to.
+    return true;
+  }
+}
+
+// Unplugging a device fires `devicechange`. The refresh also covers devices
+// that appear later, and moves an active stream to the default device.
+function onDeviceChange() {
+  clearTimeout(deviceChangeTimer);
+  deviceChangeTimer = setTimeout(async () => {
+    await refreshDevices();
+    const camWanted = settings.camDevice;
+    if ((face.running || camRetry.pending) && !(await deviceListed(camWanted, "videoinput"))) {
+      settings.camDevice = "";
+      commit();
+      toast("Kamera yang dipakai hilang. Beralih ke kamera default.", 5000);
+      if (face.running) {
+        stopCamera({ silent: true });
+        await startCamera(null, { auto: true });
+      }
+    }
+    const micWanted = settings.micDevice;
+    if ((mic.running || micRetry.pending) && !(await deviceListed(micWanted, "audioinput"))) {
+      settings.micDevice = "";
+      commit();
+      toast("Mic yang dipakai hilang. Beralih ke mic default.", 5000);
+      if (mic.running) {
+        micRetry.reset();
+        mic.stop();
+        micRunning = false;
+        micUiOff();
+        await startMic(null, { auto: true });
+      }
+    }
+  }, 400);
+}
+
 /* ---------- UI wiring ---------- */
 
 $("pickVrm").addEventListener("click", () => $("vrmFile").click());
@@ -617,11 +733,11 @@ $("micDevice").addEventListener("change", async (e) => {
   settings.micDevice = e.target.value;
   commit();
   if (mic.running) {
+    micRetry.reset();
     mic.stop();
     micRunning = false;
-    $("micBtn").textContent = "Aktifkan mic";
-    $("micBtn").classList.remove("on");
-    await toggleMic();
+    micUiOff();
+    await startMic(settings.micDevice || null);
   }
 });
 $("micBtn").addEventListener("click", toggleMic);
@@ -771,8 +887,11 @@ $("obsBtn").addEventListener("click", async () => {
   }
 });
 
-window.addEventListener("pointerdown", () => {
-  if (mic.running && mic.suspended) mic.resume();
+window.addEventListener("pointerdown", async () => {
+  if (mic.running && mic.suspended) {
+    const resumed = await mic.resume();
+    if (resumed) toast("Audio mic aktif");
+  }
 });
 
 window.addEventListener("keydown", (e) => {
@@ -1081,8 +1200,16 @@ function frame(now) {
     }
 
     const micEl = $("statusMic");
-    micEl.textContent = `mic: ${mic.running ? `${Math.round(micLevel * 100)}%` : "off"}`;
-    micEl.className = mic.running && micLevel > 0.02 ? "good" : "";
+    if (!mic.running) {
+      micEl.textContent = "mic: off";
+      micEl.className = "";
+    } else if (mic.suspended) {
+      micEl.textContent = "mic: suspended";
+      micEl.className = "bad";
+    } else {
+      micEl.textContent = `mic: ${Math.round(micLevel * 100)}%`;
+      micEl.className = micLevel > 0.02 ? "good" : "";
+    }
   }
 }
 
@@ -1100,6 +1227,9 @@ async function boot() {
   poseSync.connect();
   requestAnimationFrame(frame);
   refreshDevices();
+  face.onTrackEnded = onCameraLost;
+  mic.onTrackEnded = onMicLost;
+  navigator.mediaDevices?.addEventListener?.("devicechange", onDeviceChange);
 
   const server = await getServerState();
   if (server?.settings) applyServerSettings(server.settings);
@@ -1136,6 +1266,8 @@ window.addEventListener("unhandledrejection", (e) =>
 window.__litetuber = {
   face,
   mic,
+  camRetry,
+  micRetry,
   settings,
   quality,
   get renderer() {

@@ -70,6 +70,9 @@ export class MicMouth {
     this.running = false;
     this.sampleRate = 48000;
     this.blocked = false;
+    this.suspended = false;
+    this.onTrackEnded = null;
+    this.onSuspended = null;
   }
 
   async start(deviceId) {
@@ -120,21 +123,46 @@ export class MicMouth {
     this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
     this.sampleRate = this.ctx.sampleRate;
     this.running = true;
+
+    // Fire only when the device disappears, not on our own stop(): stop()
+    // clears this handler before calling track.stop().
+    const track = this.stream.getAudioTracks()[0];
+    if (track) {
+      track.onended = () => {
+        if (!this.running) return;
+        this.running = false;
+        this.level = 0;
+        this.weights = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0, level: 0 };
+        this.stream = null;
+        this.analyser = null;
+        if (this.ctx) {
+          this.ctx.close().catch(() => {});
+          this.ctx = null;
+        }
+        this.onTrackEnded?.();
+      };
+    }
   }
 
   async resume() {
     if (this.ctx && this.ctx.state === "suspended") {
       await this.ctx.resume().catch(() => {});
       this.suspended = this.ctx.state !== "running";
+      if (!this.suspended) this.onSuspended?.(false);
     }
+    return !this.suspended;
   }
 
   stop() {
     this.running = false;
+    this.suspended = false;
     this.level = 0;
     this.weights = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0, level: 0 };
     if (this.stream) {
-      for (const track of this.stream.getTracks()) track.stop();
+      for (const track of this.stream.getTracks()) {
+        track.onended = null;
+        track.stop();
+      }
       this.stream = null;
     }
     if (this.ctx) {

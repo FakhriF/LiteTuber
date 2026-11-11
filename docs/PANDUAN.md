@@ -149,6 +149,14 @@ Coba cahaya lebih terang, jarak ±50 cm, dan pilih kamera yang benar di dropdown
 Pastikan **Aktifkan mic** sudah diklik, sumber mulut bukan **Kamera saja**, dan meter level bergerak
 saat kamu bicara. Naikkan **Sensitivitas mic** kalau meter bergerak tapi mulut kurang terbuka.
 
+**Kamera atau mic terputus saat dipakai**
+LiteTuber mencoba menyambung ulang otomatis maksimal 3 kali dengan jeda 2, 5, lalu 10 detik. Kalau
+device tidak kembali, status di panel berubah dan tombol **Aktifkan kamera** / **Aktifkan mic** bisa
+diklik untuk mencoba lagi. Izin yang ditolak tidak diulang otomatis; ubah izin di browser atau
+Windows Settings dulu. Kalau device yang dipakai hilang, aplikasi beralih ke device default dan
+menampilkan pemberitahuan. Status **mic: suspended** berarti browser menahan audio; klik sekali di
+halaman untuk mengaktifkannya.
+
 **Avatar terlalu gelap/terang**
 Atur **Exposure** di tab Tampilan.
 

@@ -39,6 +39,7 @@ export class FaceTracker {
     this.busy = false;
     this.busyAt = 0;
     this.frameId = 0;
+    this.onTrackEnded = null;
   }
 
   async ensureLandmarker() {
@@ -225,6 +226,22 @@ export class FaceTracker {
     this.running = true;
     this.error = null;
     this.lastTs = -1;
+
+    // A track ends when the cable is unplugged or the device is switched off.
+    // track.stop() does not fire this, so an intentional stop stays quiet.
+    const track = this.stream.getVideoTracks()[0];
+    if (track) {
+      track.onended = () => {
+        if (!this.running) return;
+        this.running = false;
+        this.hasFace = false;
+        this.confidence = 0;
+        this.busy = false;
+        this.stream = null;
+        if (this.video) this.video.srcObject = null;
+        this.onTrackEnded?.();
+      };
+    }
   }
 
   async start(videoEl, deviceId) {
@@ -237,7 +254,10 @@ export class FaceTracker {
     this.hasFace = false;
     this.busy = false;
     if (this.stream) {
-      for (const track of this.stream.getTracks()) track.stop();
+      for (const track of this.stream.getTracks()) {
+        track.onended = null;
+        track.stop();
+      }
       this.stream = null;
     }
     if (this.video) this.video.srcObject = null;
