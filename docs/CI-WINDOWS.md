@@ -35,8 +35,10 @@ File: `.github/workflows/tauri.yml`. Isinya:
 - memasang Node 22, Rust stable, dan cache Cargo,
 - menjalankan `npm ci`, `npm test`, `npm run build`, lalu `cargo test`,
 - membuild installer NSIS dengan `tauri-action`,
-- mengunggah `.exe` sebagai artifact `litetuber-nsis`,
-- kalau dipicu oleh tag `v*`, otomatis membuat GitHub Release dan menaruh installer di Assets.
+- membungkus `litetuber.exe` menjadi `*-portable.zip` beserta `BACA-INI.txt`,
+- mengunggah `.exe` sebagai artifact `litetuber-nsis` dan ZIP sebagai `litetuber-portable`,
+- kalau dipicu oleh tag `v*`, otomatis membuat GitHub Release, menaruh installer di Assets, lalu
+  melampirkan ZIP portable ke release yang sama.
 
 Workflow memakai npm secara eksplisit (`tauriScript: npm run tauri`). Repo hanya menyimpan
 `package-lock.json`; jangan tambahkan `bun.lock`, `pnpm-lock.yaml`, atau `yarn.lock`, karena
@@ -51,15 +53,18 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Gitea akan mirror tag ke GitHub, lalu workflow **Tauri Windows** berjalan, membuild NSIS, dan
-membuat release `LiteTuber v0.1.0` berisi `*-setup.exe`. Halaman Releases bisa diunduh tanpa akun
-GitHub; artifact Actions tetap ada sebagai cadangan dan memerlukan login.
+Gitea akan mirror tag ke GitHub, lalu workflow **Tauri Windows** berjalan, membuild NSIS dan ZIP
+portable, lalu membuat release `LiteTuber v0.1.0` berisi `*-setup.exe` dan `*-portable.zip`. Halaman
+Releases bisa diunduh tanpa akun GitHub; artifact Actions tetap ada sebagai cadangan dan memerlukan
+login.
 
 `workflow_dispatch` (tombol **Run workflow**) hanya menghasilkan artifact, tidak membuat release.
 Pastikan versi di `package.json` dan `src-tauri/tauri.conf.json` sudah dinaikkan sebelum membuat tag.
 
-Distribusi portable (ZIP tanpa installer) belum dibuat. NSIS saat ini adalah satu-satunya target
-bundle; portable bisa ditambahkan setelah installer pertama berhasil diuji.
+ZIP portable berisi `LiteTuber.exe` dan `BACA-INI.txt`. Data tetap disimpan di
+`%APPDATA%\app.litetuber.desktop\`, sama seperti versi installer, jadi ZIP ini hanya menghilangkan
+langkah instalasi. Mode benar-benar portable (data di sebelah `.exe`) belum dibuat karena mengubah
+cara server mencari folder data.
 
 ## Alur kerja yang disarankan
 
@@ -67,7 +72,7 @@ bundle; portable bisa ditambahkan setelah installer pertama berhasil diuji.
    `npm test`, `npm run build`, `cargo test --manifest-path src-tauri/Cargo.toml`.
 2. Push ke Gitea, lalu mirror ke GitHub (remote `github`).
 3. Buka tab **Actions → Tauri Windows → Run workflow** di GitHub, atau buat tag `v0.1.0`.
-4. Unduh artifact `litetuber-nsis` dari halaman run.
+4. Unduh artifact `litetuber-nsis` (installer) atau `litetuber-portable` (ZIP) dari halaman run.
 5. Pasang installer itu di PC gaming sekali, lalu cek:
    - app terbuka dan server lokal jalan,
    - kamera/mic berfungsi,

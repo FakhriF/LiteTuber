@@ -44,6 +44,19 @@ Untuk update, tutup app lalu jalankan installer versi baru. Tidak perlu uninstal
 mengganti versi lama dan data di `%APPDATA%` tetap ada. Untuk uninstall, pakai
 **Settings → Apps → LiteTuber → Uninstall**.
 
+### Kalau memakai ZIP portable
+
+1. Unduh `*-portable.zip` dari **Assets** halaman Releases.
+2. Ekstrak ke folder biasa, lalu jalankan `LiteTuber.exe`. Tidak perlu installer.
+3. Kalau SmartScreen muncul, pilih **More info → Run anyway**.
+4. Data tetap disimpan di `%APPDATA%\app.litetuber.desktop\`, sama seperti versi installer. Jadi
+   setelan, avatar, dan profil tidak hilang saat folder ZIP dipindah, tapi juga tidak ikut kalau
+   folder itu disalin ke PC lain.
+5. Butuh WebView2 Runtime. Windows 10/11 biasanya sudah punya; kalau app tidak terbuka, pasang
+   WebView2 Runtime dari Microsoft.
+
+Update versi portable cukup ganti `LiteTuber.exe` dengan yang baru; tutup app dulu.
+
 ## 2. Pertama kali
 
 1. Buka `http://127.0.0.1:8770/` (atau jendela LiteTuber).
@@ -134,19 +147,21 @@ Yang tersedia:
 
 - mode browser lewat `npm start`,
 - installer NSIS untuk desktop,
+- ZIP portable tanpa installer (data tetap di `%APPDATA%`),
 - build dari source untuk desktop,
-- workflow GitHub Actions yang membuild installer dari tag `v*`,
+- workflow GitHub Actions yang membuild installer dan ZIP portable dari tag `v*`,
 - pemulihan kamera dan mic setelah device putus atau berganti.
 
 Belum tersedia:
 
-- distribusi portable/ZIP,
+- mode benar-benar portable (data di sebelah `.exe`),
 - tanda tangan installer, jadi SmartScreen masih muncul,
 - paket MSIX untuk Microsoft Store,
 - auto-update di dalam aplikasi.
 
 Build yang belum dirilis bisa dicoba lewat artifact **Actions → Tauri Windows** (perlu login
-GitHub). Data dan URL OBS-nya sama dengan versi installer.
+GitHub): `litetuber-nsis` atau `litetuber-portable`. Data dan URL OBS-nya sama dengan versi
+installer.
 
 ## 6. Di mana data disimpan
 
