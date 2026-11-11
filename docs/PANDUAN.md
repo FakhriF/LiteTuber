@@ -40,8 +40,9 @@ npm run tauri dev
 4. Buka **LiteTuber** dari Start Menu.
 5. Jendela LiteTuber adalah panel. Biarkan terbuka saat OBS dipakai.
 
-Untuk update, tutup app lalu jalankan installer versi baru. Data di `%APPDATA%` tidak dihapus.
-Untuk uninstall, pakai **Settings → Apps → LiteTuber → Uninstall**.
+Untuk update, tutup app lalu jalankan installer versi baru. Tidak perlu uninstall dulu: installer
+mengganti versi lama dan data di `%APPDATA%` tetap ada. Untuk uninstall, pakai
+**Settings → Apps → LiteTuber → Uninstall**.
 
 ## 2. Pertama kali
 
@@ -90,20 +91,25 @@ Setelah update LiteTuber, reload source OBS sekali (**klik kanan → Refresh**).
 
 ## 5. Status rilis
 
-Saat ini yang tersedia:
+Versi stabil saat ini **0.1.0**. Installer Windows ada di halaman
+[Releases](https://github.com/FakhriF/LiteTuber/releases) dan pemasangannya sudah diuji di Windows.
+
+Yang tersedia:
 
 - mode browser lewat `npm start`,
+- installer NSIS untuk desktop,
 - build dari source untuk desktop,
-- workflow yang menghasilkan installer NSIS lewat GitHub Actions.
+- workflow GitHub Actions yang membuild installer dari tag `v*`.
 
 Belum tersedia:
 
-- installer resmi yang sudah diuji di Windows,
 - distribusi portable/ZIP,
-- tanda tangan installer,
-- paket MSIX untuk Microsoft Store.
+- tanda tangan installer, jadi SmartScreen masih muncul,
+- paket MSIX untuk Microsoft Store,
+- auto-update di dalam aplikasi.
 
-Kalau installer belum ada, tetap bisa memakai mode browser. Semua data dan URL OBS sama.
+Build yang belum dirilis bisa dicoba lewat artifact **Actions → Tauri Windows** (perlu login
+GitHub). Data dan URL OBS-nya sama dengan versi installer.
 
 ## 6. Di mana data disimpan
 

@@ -68,7 +68,8 @@ Setelah update, klik kanan source OBS lalu **Refresh**. URL-nya tidak berubah.
 
 Mode browser menyimpan data di folder `data/`. Mode desktop menyimpan di
 `%APPDATA%\app.litetuber.desktop\`. OBS mengambil avatar dari server yang sama, jadi tidak ada
-salinan terpisah.
+salinan terpisah. Update installer tidak menghapus folder ini; jalankan installer baru tanpa
+uninstall.
 
 Tombol `✕` di tab Avatar menghapus avatar yang tersimpan. Cara reset dan pindah komputer ada di
 [docs/PANDUAN.md](docs/PANDUAN.md).
