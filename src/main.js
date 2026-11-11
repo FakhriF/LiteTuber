@@ -12,6 +12,8 @@ import { deletePreset, mergePreset, normalizeName, savePreset } from "./presets.
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
+$("version").textContent = `v${__APP_VERSION__}`;
+
 const params = new URLSearchParams(location.search);
 const settings = store.loadSettings();
 const forcedBg = params.get("bg");

@@ -518,6 +518,12 @@ details.adv[open] summary::before {
   color: var(--accent-2);
 }
 
+.statusbar .version {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .meter {
   position: relative;
   height: 4px;

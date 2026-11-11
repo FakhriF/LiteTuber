@@ -70,7 +70,8 @@ server, jadi tidak perlu upload ulang.
 | **Mulut** | Aktifkan mic, sumber gerak mulut, sensitivitas mic, level mic, tes gerak mulut, kedip otomatis. |
 | **Tampilan** | Latar (transparan/green/blue/gambar), framing, zoom, exposure, batas FPS, kualitas render, kualitas otomatis, rate tracking, preset, dan tombol **Salin URL untuk OBS**. |
 
-Tombol `–` di kanan atas menyembunyikan panel; tekan `H` untuk memunculkannya lagi.
+Tombol `–` di kanan atas menyembunyikan panel; tekan `H` untuk memunculkannya lagi. Status bar di
+bawah panel menampilkan status kamera, wajah, mic, dan versi app yang sedang dipakai.
 
 ### Preset setelan
 
