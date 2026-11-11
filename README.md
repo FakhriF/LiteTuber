@@ -1,82 +1,76 @@
 # LiteTuber
 
-Aplikasi VTuber untuk avatar VRM. Render model `.vrm` di browser, gerakkan kepala, mata, dan mulut dari webcam/mic, lalu tampilkan di OBS sebagai Browser Source.
+LiteTuber menampilkan avatar VRM di browser. Kepala, mata, dan mulut mengikuti webcam dan mic, lalu
+hasilnya dipakai sebagai Browser Source di OBS. Model yang didukung VRM 0.x dan 1.0; Live2D tidak
+didukung. Semua proses berjalan di komputer sendiri.
 
-Fokusnya avatar VRM (VRM 0.x dan 1.0). Tidak memakai model Live2D. Semua berjalan lokal; tidak ada data yang dikirim ke mana-mana.
-
-Panduan lengkap: [docs/PANDUAN.md](docs/PANDUAN.md).
+Panduan pemakaian: [docs/PANDUAN.md](docs/PANDUAN.md). Rencana berikutnya: [ROADMAP.md](ROADMAP.md).
 
 ## Install di Windows
 
-Installer dirilis lewat halaman [Releases](https://github.com/FakhriF/LiteTuber/releases). File di
-Releases bisa diunduh tanpa akun GitHub. Kalau halaman itu masih kosong, build terbaru ada di
-artifact Actions (perlu login GitHub).
+Installer ada di halaman [Releases](https://github.com/FakhriF/LiteTuber/releases). Tidak perlu akun
+GitHub untuk mengunduh.
 
-1. Buka **Releases**, pilih versi terbaru, lalu unduh file `*-setup.exe` di bagian **Assets**.
-2. Jalankan installer.
-3. Kalau muncul SmartScreen, pilih **More info → Run anyway**. Build ini belum ditandatangani.
+1. Buka **Releases** dan pilih versi terbaru.
+2. Unduh file `*-setup.exe` dari bagian **Assets**.
+3. Jalankan installer. Kalau SmartScreen muncul, pilih **More info** lalu **Run anyway**. Build ini
+   belum ditandatangani.
 4. Buka **LiteTuber** dari Start Menu.
-5. Tambahkan **Browser Source** di OBS dengan URL `http://127.0.0.1:8770/?ui=0`, ukuran `1920×1080`.
+5. Di OBS, tambahkan **Browser Source** dengan URL `http://127.0.0.1:8770/?ui=0` dan ukuran
+   `1920×1080`.
 
-Jendela LiteTuber adalah panel pengaturan. Biarkan tetap terbuka saat OBS dipakai. Data app disimpan
-di `%APPDATA%\app.litetuber.desktop\`.
+Biarkan jendela LiteTuber terbuka selama dipakai. Jendela itu panel pengaturan, sedangkan OBS hanya
+menampilkan. Data aplikasi disimpan di `%APPDATA%\app.litetuber.desktop\`.
 
-Kalau belum ada rilis dan kamu hanya ingin mencoba build terbaru: buka **Actions → Tauri Windows**,
-pilih run terbaru, unduh artifact `litetuber-nsis`, lalu ekstrak. Artifact Actions memerlukan akun
-GitHub; file di Releases tidak.
+Kalau ingin mencoba build yang belum dirilis, artifact Actions bisa diunduh dari tab **Actions**
+(perlu login GitHub). Cara build dan rilis ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
 
-Cara membuat installer dan rilis lewat CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
+## Jalankan dari source
 
-## Jalankan tanpa installer
-
-Butuh Node.js 18+.
+Butuh Node.js 18 atau lebih baru.
 
 ```bash
 cd ~/Projects/vtuber-lite
-npm install      # sekali saja
-npm start        # build + jalankan server
+npm install
+npm start
 ```
 
-Buka `http://127.0.0.1:8770/`, pilih avatar, lalu nyalakan kamera dan mic dari panel.
-
-Kalau sudah pernah build dan cuma mau menjalankan server:
-
-```bash
-npm run serve
-```
+Buka `http://127.0.0.1:8770/`. Kalau hanya ingin menjalankan server tanpa build ulang, pakai
+`npm run serve`.
 
 ## Pakai di OBS
 
-1. Jalankan LiteTuber (app desktop atau `npm start`) dan biarkan panel tetap terbuka.
-2. Di OBS: **Sources → + → Browser**.
-3. URL: `http://127.0.0.1:8770/?ui=0`. Tombol **Salin URL untuk OBS** di panel juga bisa.
-4. Width `1920`, Height `1080`.
-5. Background transparan otomatis. Untuk green screen, pilih **Green** di panel.
+1. Jalankan LiteTuber dan buka panelnya. Jangan tutup atau minimize panel selama OBS dipakai.
+2. Di OBS, klik **+** pada **Sources** lalu pilih **Browser**.
+3. Isi URL `http://127.0.0.1:8770/?ui=0`. Tombol **Salin URL untuk OBS** di panel menghasilkan URL
+   yang sama.
+4. Atur width `1920` dan height `1080`.
+5. Latar transparan aktif sendiri. Kalau butuh green screen, pilih **Green** di panel.
 
-Source OBS hanya menampilkan. Gerakan dikirim dari panel lewat relay lokal, jadi OBS tidak perlu
-kamera sendiri. Badge **OBS off / OBS 1** di tab Tampilan menunjukkan apakah relay tersambung.
+OBS tidak membuka kamera sendiri. Panel mengirim gerakan ke OBS lewat server lokal. Di tab
+**Tampilan** ada badge **OBS off / OBS 1** yang menunjukkan apakah OBS sudah tersambung.
 
-Setelah update, reload source OBS sekali (**klik kanan → Refresh**). URL-nya tetap sama.
+Setelah update, klik kanan source OBS lalu **Refresh**. URL-nya tidak berubah.
 
 ## Fitur
 
-- Avatar VRM 0.x dan 1.0, bisa drag & drop atau pilih file.
-- Tracking wajah: kepala, kedip, ekspresi, dan arah mata.
-- Gerak mulut dari kamera dan/atau mic, dengan 5 bentuk vokal.
-- Background transparan, green, blue, atau gambar.
-- Framing kepala–bahu, setengah badan, atau seluruh badan.
+- Avatar VRM 0.x dan 1.0, lewat drag and drop atau tombol pilih file.
+- Tracking kepala, kedip, ekspresi, dan arah mata.
+- Gerak mulut dari kamera, mic, atau keduanya.
+- Latar transparan, green, blue, atau gambar.
+- Framing kepala-bahu, setengah badan, atau seluruh badan.
 - Animasi idle dan fisika rambut.
-- Kualitas otomatis: resolusi dan rate tracking menyesuaikan FPS.
-- Upload avatar divalidasi, dengan progres dan tanpa merusak avatar lama.
-- Pengaturan tersimpan di server lokal dan ikut terbaca oleh OBS.
+- Penyesuaian kualitas berdasarkan FPS.
+- Upload avatar dengan validasi dan progres; avatar lama tidak rusak kalau file ditolak.
+- Setelan disimpan di server lokal dan dipakai lagi oleh OBS.
 
 ## Data
 
-- Mode browser: folder `data/` di repo.
-- Mode desktop: `%APPDATA%\app.litetuber.desktop\` (Windows).
-- OBS tidak menyimpan avatar sendiri; dia mengambil dari server lewat URL yang sama.
+Mode browser menyimpan data di folder `data/`. Mode desktop menyimpan di
+`%APPDATA%\app.litetuber.desktop\`. OBS mengambil avatar dari server yang sama, jadi tidak ada
+salinan terpisah.
 
-Tombol `✕` di tab Avatar menghapus avatar tersimpan. Detail reset dan pindah komputer ada di
+Tombol `✕` di tab Avatar menghapus avatar yang tersimpan. Cara reset dan pindah komputer ada di
 [docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Shortcut
@@ -87,23 +81,20 @@ Tombol `✕` di tab Avatar menghapus avatar tersimpan. Detail reset dan pindah k
 | `R` | kalibrasi posisi netral kepala |
 | `F` | fullscreen |
 
-## Troubleshooting
+## Kalau ada masalah
 
-**Kamera tidak muncul** — cek izin kamera di browser atau Windows, dan pastikan tidak ada app lain
-yang memakai webcam.
-
-**Panel ikut kerekam di OBS** — pakai URL `?ui=0`, bukan URL panel.
-
-**Avatar di OBS diam** — panel harus terbuka dan tidak diminimize. Reload source OBS, lalu cek badge
-**OBS 1**.
-
-**Kualitas turun sendiri** — itu fitur kualitas otomatis. Matikan di tab Tampilan kalau tidak mau.
+- **Kamera tidak muncul**: cek izin kamera di browser atau Windows, dan pastikan webcam tidak dipakai
+  aplikasi lain.
+- **Panel ikut terekam**: pakai URL `?ui=0`, bukan URL panel.
+- **Avatar diam di OBS**: panel harus terbuka dan tidak diminimize. Refresh source OBS, lalu cek
+  badge **OBS 1**.
+- **Kualitas turun sendiri**: itu penyesuaian otomatis. Matikan di tab Tampilan kalau tidak mau.
 
 Masalah lain dan langkah lengkapnya ada di [docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Development
 
-Butuh Node.js 18+. Untuk build desktop, butuh Rust stable dan dependensi Tauri.
+Butuh Node.js 18 atau lebih baru. Untuk build desktop, butuh Rust stable dan dependensi Tauri.
 
 ```bash
 npm test        # Vitest
@@ -122,5 +113,5 @@ menjalankan test yang sama, `cargo test`, lalu membuild installer NSIS.
 
 ## Lisensi
 
-MIT — lihat [LICENSE](LICENSE). Model contoh tidak disertakan. Lisensi dependensi ada di
+MIT, lihat [LICENSE](LICENSE). Model contoh tidak disertakan. Lisensi dependensi ada di
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
