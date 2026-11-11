@@ -224,6 +224,21 @@ select:hover {
   border-color: #4a4d56;
 }
 
+input[type="text"] {
+  min-width: 0;
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--text);
+  background: #22242a;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* Native dropdown popups ignore the page palette. `color-scheme: dark` makes
    Chromium/WebView2 draw a dark list, and the explicit option colours cover
    browsers that still use the OS default white background. */

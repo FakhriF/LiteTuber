@@ -7,6 +7,7 @@ import { PoseSync } from "./pose-sync.js";
 import { inspectVrm } from "./vrm.js";
 import { RetryLoop, isFatalMediaError } from "./recovery.js";
 import * as store from "./store.js";
+import { deletePreset, mergePreset, normalizeName, savePreset } from "./presets.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -654,6 +655,45 @@ function commit() {
   pushSettings();
 }
 
+/* ---------- presets ---------- */
+
+let presets = store.loadPresets();
+
+function updatePresetButtons() {
+  const selected = $("presetList").value;
+  $("presetApply").disabled = !selected;
+  $("presetDelete").disabled = !selected;
+}
+
+function renderPresetOptions(selected = $("presetList").value) {
+  const select = $("presetList");
+  const names = presets.map((preset) => preset.name).sort((a, b) => a.localeCompare(b, "id"));
+  select.innerHTML = "";
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "— belum dipilih —";
+  select.append(none);
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    select.append(option);
+  }
+  select.value = names.includes(selected) ? selected : "";
+  updatePresetButtons();
+}
+
+function applyPresetSettings(preset) {
+  Object.assign(settings, mergePreset(settings, preset));
+  syncUI();
+  syncQualityFromSettings();
+  applyFraming();
+  applyBackground();
+  applyRenderScaleSetting();
+  renderer.toneMappingExposure = settings.exposure;
+  commit();
+}
+
 async function deviceListed(deviceId, kind) {
   if (!deviceId) return true;
   try {
@@ -876,6 +916,60 @@ $("bgFile").addEventListener("change", async (e) => {
   };
   reader.readAsDataURL(file);
 });
+
+$("presetList").addEventListener("change", updatePresetButtons);
+
+$("presetSave").addEventListener("click", () => {
+  const name = normalizeName($("presetName").value) || $("presetList").value;
+  const result = savePreset(presets, name, settings);
+  if (result.error) {
+    toast(result.error);
+    return;
+  }
+  if (!store.savePresets(result.presets)) {
+    toast("Preset gagal disimpan. Penyimpanan browser penuh?");
+    return;
+  }
+  presets = result.presets;
+  $("presetName").value = "";
+  renderPresetOptions(result.preset.name);
+  toast(
+    result.replaced
+      ? `Preset "${result.preset.name}" diperbarui`
+      : `Preset "${result.preset.name}" disimpan`,
+  );
+});
+
+$("presetApply").addEventListener("click", () => {
+  const name = $("presetList").value;
+  const preset = presets.find((item) => item.name === name);
+  if (!preset) {
+    toast("Pilih preset dulu.");
+    return;
+  }
+  applyPresetSettings(preset);
+  if (settings.bg === "image" && !$("bgImage").style.backgroundImage) {
+    toast(`Preset "${name}" diterapkan. Belum ada gambar latar; pilih gambar di tab Tampilan.`, 4200);
+  } else {
+    toast(`Preset "${name}" diterapkan`);
+  }
+});
+
+$("presetDelete").addEventListener("click", () => {
+  const name = $("presetList").value;
+  if (!name) return;
+  if (!window.confirm(`Hapus preset "${name}"?`)) return;
+  const next = deletePreset(presets, name);
+  if (!store.savePresets(next)) {
+    toast("Preset gagal dihapus.");
+    return;
+  }
+  presets = next;
+  renderPresetOptions("");
+  toast(`Preset "${name}" dihapus`);
+});
+
+renderPresetOptions("");
 
 $("obsBtn").addEventListener("click", async () => {
   const url = `${location.origin}${location.pathname}?ui=0`;

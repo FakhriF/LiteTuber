@@ -68,9 +68,25 @@ server, jadi tidak perlu upload ulang.
 | **Avatar** | Pilih/ganti avatar, hapus avatar tersimpan (tombol `✕`). |
 | **Wajah** | Aktifkan kamera, kalibrasi, sensitivitas, smoothing, mirror, balik X/Y/Z, prosesor tracking (GPU/CPU), dan on/off fitur (kepala, mata, kedip, ekspresi, idle, fisika rambut). |
 | **Mulut** | Aktifkan mic, sumber gerak mulut, sensitivitas mic, level mic, tes gerak mulut, kedip otomatis. |
-| **Tampilan** | Latar (transparan/green/blue/gambar), framing, zoom, exposure, batas FPS, kualitas render, kualitas otomatis, rate tracking, dan tombol **Salin URL untuk OBS**. |
+| **Tampilan** | Latar (transparan/green/blue/gambar), framing, zoom, exposure, batas FPS, kualitas render, kualitas otomatis, rate tracking, preset, dan tombol **Salin URL untuk OBS**. |
 
 Tombol `–` di kanan atas menyembunyikan panel; tekan `H` untuk memunculkannya lagi.
+
+### Preset setelan
+
+Preset menyimpan kombinasi setelan supaya tidak perlu mengatur ulang saat pindah gaya tampilan.
+Isinya: framing, zoom, exposure, sensitivitas, smoothing, mirror, sumber mulut, gain mic, batas FPS,
+kualitas render, rate tracking, kualitas otomatis, dan pilihan latar.
+
+1. Atur panel seperti yang diinginkan.
+2. Di tab **Tampilan**, isi **Nama preset**, lalu klik **Simpan**.
+3. Untuk memakai lagi, pilih preset di dropdown lalu klik **Terapkan**.
+4. Untuk menghapus, pilih preset lalu klik `✕` dan konfirmasi.
+
+Nama yang sama akan memperbarui preset lama, bukan membuat duplikat. Preset disimpan di
+`localStorage` browser, bukan di folder data server, jadi tidak ikut terbawa saat pindah komputer.
+Avatar dan file gambar latar tidak disimpan di preset; preset hanya mengingat pilihan latarnya.
+Maksimal 24 preset.
 
 ## 4. Memasang di OBS
 
@@ -91,7 +107,7 @@ Setelah update LiteTuber, reload source OBS sekali (**klik kanan → Refresh**).
 
 ## 5. Status rilis
 
-Versi stabil saat ini **0.1.0**. Installer Windows ada di halaman
+Versi stabil saat ini **0.2.0**. Installer Windows ada di halaman
 [Releases](https://github.com/FakhriF/LiteTuber/releases) dan pemasangannya sudah diuji di Windows.
 
 Yang tersedia:
@@ -99,7 +115,8 @@ Yang tersedia:
 - mode browser lewat `npm start`,
 - installer NSIS untuk desktop,
 - build dari source untuk desktop,
-- workflow GitHub Actions yang membuild installer dari tag `v*`.
+- workflow GitHub Actions yang membuild installer dari tag `v*`,
+- pemulihan kamera dan mic setelah device putus atau berganti.
 
 Belum tersedia:
 

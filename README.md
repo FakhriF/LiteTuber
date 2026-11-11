@@ -61,8 +61,10 @@ Setelah update, klik kanan source OBS lalu **Refresh**. URL-nya tidak berubah.
 - Framing kepala-bahu, setengah badan, atau seluruh badan.
 - Animasi idle dan fisika rambut.
 - Penyesuaian kualitas berdasarkan FPS.
+- Pemulihan kamera dan mic setelah device putus atau berganti.
+- Preset setelan: simpan kombinasi framing, kualitas, dan latar dengan nama.
 - Upload avatar dengan validasi dan progres; avatar lama tidak rusak kalau file ditolak.
-- Setelan disimpan di server lokal dan dipakai lagi oleh OBS.
+- Setelan dan preset disimpan lokal dan dipakai lagi oleh OBS.
 
 ## Data
 

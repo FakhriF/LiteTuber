@@ -1,4 +1,7 @@
+import { sanitizePresets } from "./presets.js";
+
 const SETTINGS_KEY = "litetuber.settings.v1";
+const PRESETS_KEY = "litetuber.presets.v1";
 
 export const defaults = {
   bg: "transparent",
@@ -50,6 +53,25 @@ export function saveSettings(settings) {
       /* ignore quota errors */
     }
   }, 120);
+}
+
+export function loadPresets() {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (!raw) return [];
+    return sanitizePresets(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
+export function savePresets(presets) {
+  try {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(sanitizePresets(presets)));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const DB_NAME = "litetuber";
