@@ -49,12 +49,13 @@ Workflow memakai npm secara eksplisit (`tauriScript: npm run tauri`). Repo hanya
 Rilis dibuat otomatis dari tag, jadi tidak perlu upload manual:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+# ganti X.Y.Z dengan versi yang mau dirilis, contoh v0.3.0
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 Gitea akan mirror tag ke GitHub, lalu workflow **Tauri Windows** berjalan, membuild NSIS dan ZIP
-portable, lalu membuat release `LiteTuber v0.1.0` berisi `*-setup.exe` dan `*-portable.zip`. Halaman
+portable, lalu membuat release `LiteTuber vX.Y.Z` berisi `*-setup.exe` dan `*-portable.zip`. Halaman
 Releases bisa diunduh tanpa akun GitHub; artifact Actions tetap ada sebagai cadangan dan memerlukan
 login.
 
@@ -71,7 +72,8 @@ cara server mencari folder data.
 1. Kode tetap ditulis dan dites di laptop Linux:
    `npm test`, `npm run build`, `cargo test --manifest-path src-tauri/Cargo.toml`.
 2. Push ke Gitea, lalu mirror ke GitHub (remote `github`).
-3. Buka tab **Actions → Tauri Windows → Run workflow** di GitHub, atau buat tag `v0.1.0`.
+3. Buka tab **Actions → Tauri Windows → Run workflow** di GitHub, atau buat tag `vX.Y.Z` untuk
+   rilis publik.
 4. Unduh artifact `litetuber-nsis` (installer) atau `litetuber-portable` (ZIP) dari halaman run.
 5. Pasang installer itu di PC gaming sekali, lalu cek:
    - app terbuka dan server lokal jalan,
