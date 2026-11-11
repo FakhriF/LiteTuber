@@ -22,7 +22,7 @@ GitHub untuk mengunduh.
 Biarkan jendela LiteTuber terbuka selama dipakai. Jendela itu panel pengaturan, sedangkan OBS hanya
 menampilkan. Data aplikasi disimpan di `%APPDATA%\app.litetuber.desktop\`.
 
-Versi tanpa installer juga tersedia: unduh `*-portable.zip`, ekstrak, lalu jalankan
+Mulai v0.3.0, versi tanpa installer juga tersedia: unduh `*-portable.zip`, ekstrak, lalu jalankan
 `LiteTuber.exe`. Data tetap disimpan di `%APPDATA%`, jadi setelan, avatar, dan profil tidak hilang
 saat folder ZIP dipindah. Butuh WebView2 Runtime; Windows 10/11 biasanya sudah punya.
 

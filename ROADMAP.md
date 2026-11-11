@@ -21,8 +21,8 @@ sesuai laporan bug dan kebutuhan pengguna.
 
 ## v0.3
 
-- **Portable ZIP.** ZIP tanpa installer berisi `LiteTuber.exe` dan `BACA-INI.txt`, dibuild dan
-  dilampirkan ke release bersama installer. Data tetap di `%APPDATA%`; mode benar-benar portable
+- **Portable ZIP (0.3.0).** ZIP tanpa installer berisi `LiteTuber.exe` dan `BACA-INI.txt`, dibuild
+  dan dilampirkan ke release bersama installer. Data tetap di `%APPDATA%`; mode benar-benar portable
   (data di sebelah `.exe`) belum dibuat karena mengubah cara server mencari folder data.
 - **Pisah `main.js`.** Pecah loop render, sinkronisasi, dan UI. Bagian profil sudah dipindah ke
   modul sendiri; presets dan sisa UI menyusul tanpa perubahan perilaku.

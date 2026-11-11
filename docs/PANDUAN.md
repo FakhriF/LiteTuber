@@ -46,6 +46,8 @@ mengganti versi lama dan data di `%APPDATA%` tetap ada. Untuk uninstall, pakai
 
 ### Kalau memakai ZIP portable
 
+ZIP portable tersedia mulai v0.3.0.
+
 1. Unduh `*-portable.zip` dari **Assets** halaman Releases.
 2. Ekstrak ke folder biasa, lalu jalankan `LiteTuber.exe`. Tidak perlu installer.
 3. Kalau SmartScreen muncul, pilih **More info → Run anyway**.
@@ -143,11 +145,15 @@ Setelah update LiteTuber, reload source OBS sekali (**klik kanan → Refresh**).
 Versi stabil saat ini **0.2.0**. Installer Windows ada di halaman
 [Releases](https://github.com/FakhriF/LiteTuber/releases) dan pemasangannya sudah diuji di Windows.
 
+Rilis berikutnya adalah **0.3.0**. Build ini menambahkan profil lengkap, import/export preset, dan
+ZIP portable. ZIP portable tidak ditunda ke 0.3.1 karena 0.3.0 belum dirilis dan build-nya sudah
+diuji.
+
 Yang tersedia:
 
 - mode browser lewat `npm start`,
-- installer NSIS untuk desktop,
-- ZIP portable tanpa installer (data tetap di `%APPDATA%`),
+- installer NSIS untuk desktop (sejak 0.2.0),
+- ZIP portable tanpa installer, data tetap di `%APPDATA%` (sejak 0.3.0),
 - build dari source untuk desktop,
 - workflow GitHub Actions yang membuild installer dan ZIP portable dari tag `v*`,
 - pemulihan kamera dan mic setelah device putus atau berganti.
