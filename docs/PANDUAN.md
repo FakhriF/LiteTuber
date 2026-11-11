@@ -142,12 +142,9 @@ Setelah update LiteTuber, reload source OBS sekali (**klik kanan → Refresh**).
 
 ## 5. Status rilis
 
-Versi stabil saat ini **0.2.0**. Installer Windows ada di halaman
-[Releases](https://github.com/FakhriF/LiteTuber/releases) dan pemasangannya sudah diuji di Windows.
-
-Rilis berikutnya adalah **0.3.0**. Build ini menambahkan profil lengkap, import/export preset, dan
-ZIP portable. ZIP portable tidak ditunda ke 0.3.1 karena 0.3.0 belum dirilis dan build-nya sudah
-diuji.
+Versi stabil saat ini **0.3.0**. Installer dan ZIP portable ada di halaman
+[Releases](https://github.com/FakhriF/LiteTuber/releases); keduanya sudah diuji di Windows.
+Versi 0.3.0 menambahkan profil lengkap, ekspor/impor preset, dan ZIP portable.
 
 Yang tersedia:
 

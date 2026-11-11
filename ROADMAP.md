@@ -18,12 +18,11 @@ sesuai laporan bug dan kebutuhan pengguna.
 - Profil lengkap: avatar, gambar latar, dan setelan disimpan sebagai satu profil dengan salinan
   aset di server. Terapkan profil untuk berpindah tanpa upload avatar lagi. Maksimal 12 profil.
 - Test Vitest dan Rust, plus CI Linux dan Windows.
+- ZIP portable tanpa installer (`*-portable.zip`) yang ikut diunggah ke release bersama installer;
+  data tetap di `%APPDATA%`. Mode benar-benar portable (data di sebelah `.exe`) belum dibuat.
 
 ## v0.3
 
-- **Portable ZIP (0.3.0).** ZIP tanpa installer berisi `LiteTuber.exe` dan `BACA-INI.txt`, dibuild
-  dan dilampirkan ke release bersama installer. Data tetap di `%APPDATA%`; mode benar-benar portable
-  (data di sebelah `.exe`) belum dibuat karena mengubah cara server mencari folder data.
 - **Pisah `main.js`.** Pecah loop render, sinkronisasi, dan UI. Bagian profil sudah dipindah ke
   modul sendiri; presets dan sisa UI menyusul tanpa perubahan perilaku.
 
