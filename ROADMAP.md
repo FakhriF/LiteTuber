@@ -14,6 +14,9 @@ sesuai laporan bug dan kebutuhan pengguna.
 
 ## v0.2: reliability kamera dan mic
 
+Lingkup rilis ini dibekukan: hanya pemulihan kamera/mic, tanpa fitur baru. Preset dan profil
+dikerjakan setelah rilis ini supaya build yang diuji di Windows tetap fokus pada satu perubahan.
+
 Tujuan: tracking tetap berjalan dan status perangkat selalu jelas saat kamera atau mic bermasalah.
 Tidak ada fitur baru di rilis ini.
 
@@ -38,7 +41,10 @@ Kriteria selesai:
 
 - **Portable ZIP.** Versi tanpa installer. Data tetap di `%APPDATA%`; mode benar-benar portable
   (data di sebelah `.exe`) diputuskan terpisah karena mengubah cara server mencari folder data.
-- **Profil/preset.** Simpan kombinasi avatar dan setelan, lalu pindah tanpa mengatur ulang.
+- **Profil/preset.** Simpan kombinasi avatar, background, dan setelan, lalu pindah tanpa mengatur
+  ulang. Ini bukan sekadar daftar setelan: server sekarang hanya menyimpan satu `avatar.vrm` dan
+  satu `background.json`, jadi preset yang mengganti avatar butuh salinan aset per profil dan API
+  baru. Dikerjakan bertahap: preset setelan dulu, lalu profil lengkap dengan aset.
 - **Pisah `main.js`.** Pecah loop render, sinkronisasi, dan UI. Tidak ada perubahan perilaku.
 
 ## Rencana lanjutan
