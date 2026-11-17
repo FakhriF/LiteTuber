@@ -1,128 +1,131 @@
 # LiteTuber
 
-LiteTuber menampilkan avatar VRM di browser. Kepala, mata, dan mulut mengikuti webcam dan mic, lalu
-hasilnya dipakai sebagai Browser Source di OBS. Model yang didukung VRM 0.x dan 1.0; Live2D tidak
-didukung. Semua proses berjalan di komputer sendiri.
+LiteTuber shows a VRM avatar in the browser. The head, eyes, and mouth follow your webcam and mic,
+and the result is used as an OBS Browser Source. Supported models are VRM 0.x and 1.0; Live2D is not
+supported. Everything runs on your own computer.
 
-Panduan pemakaian: [docs/PANDUAN.md](docs/PANDUAN.md). Rencana berikutnya: [ROADMAP.md](ROADMAP.md).
+User guide: [docs/PANDUAN.md](docs/PANDUAN.md) (Indonesian). What comes next: [ROADMAP.md](ROADMAP.md).
 
-## Install di Windows
+## Install on Windows
 
-Installer ada di halaman [Releases](https://github.com/FakhriF/LiteTuber/releases). Tidak perlu akun
-GitHub untuk mengunduh.
+Installers are on the [Releases](https://github.com/FakhriF/LiteTuber/releases) page. No GitHub
+account is needed to download.
 
-1. Buka **Releases** dan pilih versi terbaru.
-2. Unduh file `*-setup.exe` dari bagian **Assets**.
-3. Jalankan installer. Kalau SmartScreen muncul, pilih **More info** lalu **Run anyway**. Build ini
-   belum ditandatangani.
-4. Buka **LiteTuber** dari Start Menu.
-5. Di OBS, tambahkan **Browser Source** dengan URL `http://127.0.0.1:8770/?ui=0` dan ukuran
+1. Open **Releases** and pick the latest version.
+2. Download the `*-setup.exe` file from **Assets**.
+3. Run the installer. If SmartScreen shows up, choose **More info** then **Run anyway**. This build is
+   not signed.
+4. Open **LiteTuber** from the Start Menu.
+5. In OBS, add a **Browser Source** with the URL `http://127.0.0.1:8770/?ui=0` and size
    `1920×1080`.
 
-Biarkan jendela LiteTuber terbuka selama dipakai. Jendela itu panel pengaturan, sedangkan OBS hanya
-menampilkan. Data aplikasi disimpan di `%APPDATA%\app.litetuber.desktop\`.
+Keep the LiteTuber window open while you use it. That window is the settings panel; OBS only
+displays the output. App data is stored in `%APPDATA%\app.litetuber.desktop\`.
 
-Mulai v0.3.0, versi tanpa installer juga tersedia: unduh `*-portable.zip`, ekstrak, lalu jalankan
-`LiteTuber.exe`. Data tetap disimpan di `%APPDATA%`, jadi setelan, avatar, dan profil tidak hilang
-saat folder ZIP dipindah. Butuh WebView2 Runtime; Windows 10/11 biasanya sudah punya.
+Since v0.3.0 there is also a build without an installer: download `*-portable.zip`, extract it, and
+run `LiteTuber.exe`. Data still goes to `%APPDATA%`, so settings, avatars, and profiles are not lost
+when the ZIP folder moves. Requires the WebView2 Runtime; Windows 10/11 usually has it already.
 
-Kalau ingin mencoba build yang belum dirilis, artifact Actions bisa diunduh dari tab **Actions**
-(perlu login GitHub). Artifact installer bernama `litetuber-nsis`, versi portable bernama
-`litetuber-portable`. Cara build dan rilis ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
+To try a build that has not been released yet, download an Actions artifact from the **Actions** tab
+(GitHub login required). The installer artifact is `litetuber-nsis`, the portable one is
+`litetuber-portable`. Build and release steps are in [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md).
 
-## Jalankan dari source
+## Run from source
 
-Butuh Node.js 18 atau lebih baru.
+Requires Node.js 18 or newer.
 
 ```bash
-cd ~/Projects/vtuber-lite
+git clone https://github.com/FakhriF/LiteTuber.git
+cd LiteTuber
 npm install
 npm start
 ```
 
-Buka `http://127.0.0.1:8770/`. Kalau hanya ingin menjalankan server tanpa build ulang, pakai
-`npm run serve`.
+Open `http://127.0.0.1:8770/`. To run the server without rebuilding, use `npm run serve`.
 
-## Pakai di OBS
+## Use in OBS
 
-1. Jalankan LiteTuber dan buka panelnya. Jangan tutup atau minimize panel selama OBS dipakai.
-2. Di OBS, klik **+** pada **Sources** lalu pilih **Browser**.
-3. Isi URL `http://127.0.0.1:8770/?ui=0`. Tombol **Salin URL untuk OBS** di panel menghasilkan URL
-   yang sama.
-4. Atur width `1920` dan height `1080`.
-5. Latar transparan aktif sendiri. Kalau butuh green screen, pilih **Green** di panel.
+1. Start LiteTuber and open its panel. Do not close or minimize the panel while OBS is running.
+2. In OBS, click **+** under **Sources** and choose **Browser**.
+3. Enter the URL `http://127.0.0.1:8770/?ui=0`. The **Copy URL for OBS** button in the panel gives
+   the same URL.
+4. Set width to `1920` and height to `1080`.
+5. The transparent background is on by default. If you need a green screen, choose **Green** in the
+   panel.
 
-OBS tidak membuka kamera sendiri. Panel mengirim gerakan ke OBS lewat server lokal. Di tab
-**Tampilan** ada badge **OBS off / OBS 1** yang menunjukkan apakah OBS sudah tersambung.
+OBS does not open the camera itself. The panel sends movement to OBS through the local server. The
+**Tampilan** tab has an **OBS off / OBS 1** badge that shows whether OBS is connected.
 
-Setelah update, klik kanan source OBS lalu **Refresh**. URL-nya tidak berubah.
+After an update, right-click the OBS source and choose **Refresh**. The URL does not change.
 
-## Fitur
+## Features
 
-- Avatar VRM 0.x dan 1.0, lewat drag and drop atau tombol pilih file.
-- Tracking kepala, kedip, ekspresi, dan arah mata.
-- Gerak mulut dari kamera, mic, atau keduanya.
-- Latar transparan, green, blue, atau gambar.
-- Framing kepala-bahu, setengah badan, atau seluruh badan.
-- Animasi idle dan fisika rambut.
-- Penyesuaian kualitas berdasarkan FPS.
-- Pemulihan kamera dan mic setelah device putus atau berganti.
-- Preset setelan: simpan kombinasi framing, kualitas, dan latar dengan nama.
-- Profil lengkap: simpan avatar, gambar latar, dan setelan sekaligus, lalu pindah profil tanpa upload ulang.
-- Ekspor/impor preset sebagai JSON untuk memindahkannya ke browser atau PC lain.
-- Upload avatar dengan validasi dan progres; avatar lama tidak rusak kalau file ditolak.
-- Setelan, preset, dan profil disimpan lokal dan dipakai lagi oleh OBS.
+- VRM 0.x and 1.0 avatars, loaded by drag and drop or the file picker.
+- Head, blink, expression, and eye direction tracking.
+- Mouth movement from the camera, the mic, or both.
+- Transparent, green, blue, or image background.
+- Head-and-shoulders, half-body, or full-body framing.
+- Idle animation and hair physics.
+- Quality adjustment based on FPS.
+- Camera and mic recovery after a device disconnects or changes.
+- Settings presets: save a combination of framing, quality, and background under a name.
+- Full profiles: save the avatar, background image, and settings together, then switch profiles
+  without uploading again.
+- Preset export/import as JSON, to move presets to another browser or PC.
+- Avatar upload with validation and progress; the old avatar stays intact if a file is rejected.
+- Settings, presets, and profiles are stored locally and reused by OBS.
 
 ## Data
 
-Mode browser menyimpan data di folder `data/`. Mode desktop menyimpan di
-`%APPDATA%\app.litetuber.desktop\`. OBS mengambil avatar dari server yang sama, jadi tidak ada
-salinan terpisah. Setiap profil menyimpan salinan avatar dan latarnya di subfolder `profiles/`,
-sedangkan avatar dan latar yang sedang aktif tetap di root folder data. Update installer tidak
-menghapus folder ini; jalankan installer baru tanpa uninstall.
+Browser mode stores data in the `data/` folder. Desktop mode stores it in
+`%APPDATA%\app.litetuber.desktop\`. OBS loads the avatar from the same server, so there is no
+separate copy. Each profile keeps a copy of its avatar and background in the `profiles/` subfolder,
+while the active avatar and background stay at the root of the data folder. Running the installer
+does not delete this folder; install the new version without uninstalling first.
 
-Tombol `✕` di tab Avatar menghapus avatar yang tersimpan. Cara reset dan pindah komputer ada di
-[docs/PANDUAN.md](docs/PANDUAN.md).
+The `✕` button in the Avatar tab removes the saved avatar. Reset steps and moving to another
+computer are covered in [docs/PANDUAN.md](docs/PANDUAN.md).
 
-## Shortcut
+## Shortcuts
 
-| Tombol | Fungsi |
+| Key | Action |
 | --- | --- |
-| `H` | sembunyikan/tampilkan panel |
-| `R` | kalibrasi posisi netral kepala |
+| `H` | hide/show the panel |
+| `R` | calibrate the neutral head position |
 | `F` | fullscreen |
 
-## Kalau ada masalah
+## Troubleshooting
 
-- **Kamera tidak muncul**: cek izin kamera di browser atau Windows, dan pastikan webcam tidak dipakai
-  aplikasi lain.
-- **Panel ikut terekam**: pakai URL `?ui=0`, bukan URL panel.
-- **Avatar diam di OBS**: panel harus terbuka dan tidak diminimize. Refresh source OBS, lalu cek
-  badge **OBS 1**.
-- **Kualitas turun sendiri**: itu penyesuaian otomatis. Matikan di tab Tampilan kalau tidak mau.
+- **Camera does not show up**: check camera permissions in the browser or Windows, and make sure no
+  other app is using the webcam.
+- **The panel is in the recording**: use the `?ui=0` URL, not the panel URL.
+- **Avatar is frozen in OBS**: the panel must be open and not minimized. Refresh the OBS source, then
+  check the **OBS 1** badge.
+- **Quality drops on its own**: that is the automatic adjustment. Turn it off in the Tampilan tab if
+  you do not want it.
 
-Masalah lain dan langkah lengkapnya ada di [docs/PANDUAN.md](docs/PANDUAN.md).
+More problems and full steps are in [docs/PANDUAN.md](docs/PANDUAN.md).
 
 ## Development
 
-Butuh Node.js 18 atau lebih baru. Untuk build desktop, butuh Rust stable dan dependensi Tauri.
+Requires Node.js 18 or newer. Desktop builds also need stable Rust and the Tauri dependencies.
 
 ```bash
 npm test        # Vitest
-npm run build   # produksi ke dist/
-npm run serve   # jalankan server tanpa build ulang
+npm run build   # production build to dist/
+npm run serve   # run the server without rebuilding
 npm run tauri dev
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-Struktur modul dan alur data ada di [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Build installer
-Windows dan CI ada di [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md); arsitektur desktop ada di
+Module structure and data flow are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Windows installer
+builds and CI are in [docs/CI-WINDOWS.md](docs/CI-WINDOWS.md); desktop architecture is in
 [docs/DESKTOP.md](docs/DESKTOP.md).
 
-CI menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 22 dan 24. Workflow Tauri Windows
-menjalankan test yang sama, `cargo test`, lalu membuild installer NSIS.
+CI runs `npm ci`, `npm test`, and `npm run build` on Node 22 and 24. The Tauri Windows workflow runs
+the same tests, then `cargo test`, then builds the NSIS installer.
 
-## Lisensi
+## License
 
-MIT, lihat [LICENSE](LICENSE). Model contoh tidak disertakan. Lisensi dependensi ada di
+MIT, see [LICENSE](LICENSE). Sample models are not included. Dependency licenses are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
