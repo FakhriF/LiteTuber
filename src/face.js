@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import FaceWorker from "./face-worker.js?worker";
 import { vrmExpressions } from "./expressions.js";
+import { trackSizeFor } from "./track-scale.js";
 
 const WASM_PATH = "/wasm";
 const MODEL_PATH = "/models/face_landmarker.task";
@@ -38,6 +39,11 @@ export class FaceTracker {
     this.workerDisabled = params.get("worker") === "0";
     this.busy = false;
     this.busyAt = 0;
+    // 1 = hand MediaPipe the camera frame as-is. Below 1 the frame is drawn
+    // into a reusable canvas first; see track-scale.js for when that applies.
+    this.trackScale = params.get("trackScale") ? Number(params.get("trackScale")) : 1;
+    this.trackCanvas = null;
+    this.trackCtx = null;
     this.frameId = 0;
     this.onTrackEnded = null;
   }
@@ -171,6 +177,29 @@ export class FaceTracker {
     }
   }
 
+  // What MediaPipe actually looks at. Downscaling happens on the CPU/GPU
+  // compositor, which is much cheaper than the model walking the extra pixels.
+  frameSource() {
+    const video = this.video;
+    const scale = Number(this.trackScale);
+    if (!(scale > 0) || scale >= 0.999 || !video?.videoWidth) return video;
+    const size = trackSizeFor(video.videoWidth, video.videoHeight, scale);
+    if (!size) return video;
+    if (!this.trackCanvas) {
+      this.trackCanvas = document.createElement("canvas");
+      this.trackCtx = this.trackCanvas.getContext("2d", { alpha: false });
+    }
+    if (!this.trackCtx) return video;
+    if (this.trackCanvas.width !== size.width) this.trackCanvas.width = size.width;
+    if (this.trackCanvas.height !== size.height) this.trackCanvas.height = size.height;
+    try {
+      this.trackCtx.drawImage(video, 0, 0, size.width, size.height);
+    } catch {
+      return video;
+    }
+    return this.trackCanvas;
+  }
+
   queueFrame(now) {
     if (this.busy) {
       // Never wedge the pipeline if a result goes missing.
@@ -179,7 +208,7 @@ export class FaceTracker {
     }
     this.busy = true;
     this.busyAt = now;
-    createImageBitmap(this.video)
+    createImageBitmap(this.frameSource())
       .then((bitmap) => {
         if (!this.workerReady || !this.worker) {
           bitmap.close();
@@ -290,7 +319,7 @@ export class FaceTracker {
     const t0 = performance.now();
     let result;
     try {
-      result = this.landmarker.detectForVideo(this.video, ts);
+      result = this.landmarker.detectForVideo(this.frameSource(), ts);
     } catch {
       return null;
     }

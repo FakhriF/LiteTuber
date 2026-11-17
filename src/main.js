@@ -9,6 +9,7 @@ import { RetryLoop, isFatalMediaError } from "./recovery.js";
 import * as store from "./store.js";
 import { deletePreset, exportPresets, importPresets, mergePreset, normalizeName, savePreset } from "./presets.js";
 import { setupProfiles } from "./profiles.js";
+import { trackScaleFor } from "./track-scale.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -91,6 +92,10 @@ function rebuildRenderer() {
   canvas.replaceWith(nextCanvas);
   canvas = nextCanvas;
   renderer = next;
+  // The new renderer starts at its default size, so force a real resize.
+  appliedSize.width = 0;
+  appliedSize.height = 0;
+  appliedSize.ratio = 0;
   resize();
   // A resized canvas is cleared; draw once so switching quality never flashes blank.
   renderer.render(scene, camera);
@@ -152,10 +157,16 @@ for (const key of KEYS) smoothW[key] = 0;
 const MOUTH_KEYS = ["aa", "ih", "ou", "ee", "oh"];
 const EYE_KEYS = ["lookUp", "lookDown", "lookLeft", "lookRight"];
 const EXPR_KEYS = ["happy", "angry", "sad", "surprised", "relaxed"];
+const EYE_SET = new Set(EYE_KEYS);
+const EXPR_SET = new Set(EXPR_KEYS);
+const BLINK_SET = new Set(["blink", "blinkLeft", "blinkRight"]);
 
 const identity = new THREE.Quaternion();
 const smoothHead = new THREE.Quaternion();
 const targetHead = new THREE.Quaternion();
+// Reused so the 60 fps pose relay does not allocate a fresh 4-element array
+// every frame; send() copies it into the JSON string before returning.
+const headOut = [0, 0, 0, 0];
 const tmpTarget = {};
 
 let micRunning = false;
@@ -286,15 +297,15 @@ async function pushAvatar(buffer, name) {
       if (!e.lengthComputable) return;
       if (!label.textContent.startsWith(name)) return;
       const pct = Math.min(100, Math.round((e.loaded / e.total) * 100));
-      label.textContent = `${name} · mengunggah ${pct}%`;
+      label.textContent = `${name} · uploading ${pct}%`;
     });
     const done = (ok, code) => {
       label.textContent = name;
       if (!ok) {
         toast(
           code === 415
-            ? "Server menolak: file bukan avatar VRM valid"
-            : `Gagal menyimpan avatar ke server (${code})`,
+            ? "The server rejected the file: not a valid VRM avatar"
+            : `Could not save the avatar to the server (${code})`,
         );
       }
       resolve();
@@ -474,15 +485,23 @@ async function loadVrmBuffer(buffer, name, persist = true) {
     dismissHint();
     $("vrmName").textContent = name;
     applyFraming();
+    // Shader programs are compiled on the first draw otherwise, which shows up
+    // as a one-frame hitch right when an avatar appears. A failed compile is
+    // harmless: the first real render will report the error.
+    try {
+      renderer.compile(scene, camera);
+    } catch {
+      /* ignore */
+    }
     if (persist) {
       await store.saveVrm(buffer, name).catch(() => {});
       pushAvatar(buffer, name);
     }
-    toast(`Avatar dimuat: ${name}`);
+    toast(`Avatar loaded: ${name}`);
   } catch (err) {
     console.error(err);
     next.dispose();
-    toast(`Gagal memuat avatar: ${err.message || err}`);
+    toast(`Could not load the avatar: ${err.message || err}`);
   } finally {
     avatarBusy = false;
   }
@@ -516,7 +535,7 @@ async function startCamera(deviceId, { auto = false } = {}) {
     3500,
   );
   try {
-    $("camBtn").textContent = "Menyiapkan…";
+    $("camBtn").textContent = "Preparing…";
     await face.openCamera(deviceId || settings.camDevice || null, $("cam"));
     clearTimeout(slowHint);
     camStartedAt = performance.now();
@@ -614,7 +633,7 @@ async function startMic(deviceId, { auto = false } = {}) {
     await mic.start(deviceId || settings.micDevice || null);
     refreshDevices();
     micRunning = true;
-    $("micBtn").textContent = "Matikan mic";
+    $("micBtn").textContent = "Stop mic";
     $("micBtn").classList.add("on");
     micRetry.reset();
     if (mic.suspended) {
@@ -647,7 +666,7 @@ function beginMicRecovery() {
 function onMicLost() {
   micRunning = false;
   micUiOff();
-  toast("Mic terputus. Mencoba menyambung ulang…", 5000);
+  toast("Mic disconnected. Trying to reconnect…", 5000);
   beginMicRecovery();
 }
 
@@ -870,6 +889,7 @@ for (const axis of ["x", "y", "z"]) {
 $("delegate").addEventListener("change", (e) => {
   settings.delegate = e.target.value;
   face.delegate = settings.delegate;
+  applyTrackScale();
   face.resetModel();
   commit();
   if (face.running) toast("Tracking processor changed — stop and start the camera");
@@ -921,6 +941,7 @@ $("renderScale").addEventListener("change", (e) => {
 $("trackHz").addEventListener("change", (e) => {
   settings.trackHz = Number(e.target.value);
   quality.effTrackHz = settings.trackHz;
+  applyTrackScale();
   commit();
 });
 $("fpsCap").addEventListener("change", (e) => {
@@ -1117,25 +1138,61 @@ dropZone.addEventListener("drop", (e) => {
   }
 });
 
+// The drawing buffer is expensive to resize, so a drag-resize that fires
+// dozens of events per second is coalesced into one rAF, and a size or ratio
+// that did not actually change never touches WebGL at all.
+const appliedSize = { width: 0, height: 0, ratio: 0 };
+
 function applySize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
   const base = Math.max(0.4, Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.setPixelRatio(base * (quality.scale || 1));
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  const ratio = base * (quality.scale || 1);
+  if (width !== appliedSize.width || height !== appliedSize.height) {
+    renderer.setSize(width, height, false);
+    appliedSize.width = width;
+    appliedSize.height = height;
+  }
+  if (ratio !== appliedSize.ratio) {
+    renderer.setPixelRatio(ratio);
+    appliedSize.ratio = ratio;
+    // setPixelRatio re-applies the logical size with a new buffer.
+    renderer.setSize(width, height, false);
+  }
 }
 
 function resize() {
   applySize();
   applyFraming();
 }
-window.addEventListener("resize", resize);
+
+let resizeFrame = 0;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(() => {
+    resizeFrame = 0;
+    resize();
+  });
+});
 
 function syncQualityFromSettings() {
   quality.userScale = Number(settings.renderScale) || 1;
   quality.scale = quality.userScale;
   quality.effTrackHz = Number(settings.trackHz) || 30;
   quality.fpsEma = 0;
+  applyTrackScale();
+}
+
+// MediaPipe cost follows pixel count, so a tight budget also gets a smaller
+// frame to look at. The visual output is unaffected: the VRM render keeps its
+// own resolution.
+function applyTrackScale() {
+  face.trackScale = trackScaleFor({
+    delegate: settings.delegate,
+    trackHz: quality.effTrackHz,
+  });
 }
 
 function applyAutoScale() {
@@ -1171,6 +1228,7 @@ function adaptQuality(now, dt) {
     changed = true;
   } else if (fps < target * 0.9 && quality.effTrackHz > 15 && face.detectMs > 12) {
     quality.effTrackHz = quality.effTrackHz > 30 ? 30 : 15;
+    applyTrackScale();
   } else if (
     fps > target * 0.97 &&
     quality.scale < quality.userScale &&
@@ -1253,10 +1311,9 @@ function frame(now) {
         exp.lookRight = swap;
       }
       for (const key of KEYS) {
-        if (!settings.useEyes && EYE_KEYS.includes(key)) continue;
-        if (!settings.useExpr && EXPR_KEYS.includes(key)) continue;
-        if (!settings.useBlink && (key === "blink" || key === "blinkLeft" || key === "blinkRight"))
-          continue;
+        if (!settings.useEyes && EYE_SET.has(key)) continue;
+        if (!settings.useExpr && EXPR_SET.has(key)) continue;
+        if (!settings.useBlink && BLINK_SET.has(key)) continue;
         tmpTarget[key] = exp[key] || 0;
       }
       if (settings.useHead) {
@@ -1329,7 +1386,7 @@ function frame(now) {
     else smoothHead.slerp(identity, headK * 0.35);
   }
 
-  if (!viewer) poseSync.send(smoothW, smoothHead.toArray());
+  if (!viewer) poseSync.send(smoothW, smoothHead.toArray(headOut, 0));
 
   avatar.pose(
     now / 1000,
@@ -1413,6 +1470,7 @@ async function boot() {
   const delegateParam = params.get("delegate");
   if (delegateParam) settings.delegate = delegateParam.toLowerCase() === "cpu" ? "CPU" : "GPU";
   face.delegate = settings.delegate;
+  applyTrackScale();
   applyPanel();
   applyTab(activeTab);
   applyBackground();

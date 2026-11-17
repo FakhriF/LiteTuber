@@ -66,7 +66,9 @@ After an update, right-click the OBS source and choose **Refresh**. The URL does
 - Transparent, green, blue, or image background.
 - Head-and-shoulders, half-body, or full-body framing.
 - Idle animation and hair physics.
-- Quality adjustment based on FPS.
+- Quality adjustment based on FPS, plus a smaller tracking frame on weak machines: with the CPU
+  processor or a low tracking rate, the camera frame is scaled to 480×360 before the face model reads
+  it. The rendered avatar keeps its full resolution.
 - Camera and mic recovery after a device disconnects or changes.
 - Settings presets: save a combination of framing, quality, and background under a name.
 - Full profiles: save the avatar, background image, and settings together, then switch profiles

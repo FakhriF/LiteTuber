@@ -279,7 +279,7 @@ async function snapshotProfile(name) {
   const key = name.toLowerCase();
   const existing = profiles.find((profile) => profile.name.toLowerCase() === key);
   if (!existing && profiles.length >= MAX_PROFILES) {
-    throw Object.assign(new Error(`Profil penuh (maksimal ${MAX_PROFILES}).`), { code: 409 });
+    throw Object.assign(new Error(`Profile limit reached (max ${MAX_PROFILES}).`), { code: 409 });
   }
   const id = existing?.id || newProfileId();
   const dir = path.join(profilesDir, id);

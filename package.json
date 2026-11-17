@@ -1,6 +1,6 @@
 {
   "name": "litetuber",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Lightweight VRM VTuber app for browser/OBS",
   "scripts": {
     "dev": "vite",

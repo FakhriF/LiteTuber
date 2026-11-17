@@ -23,19 +23,25 @@ on bug reports and user needs.
 - Vitest and Rust tests, plus Linux and Windows CI.
 - Portable ZIP without an installer (`*-portable.zip`) uploaded to the release next to the installer;
   data stays in `%APPDATA%`. A true portable mode (data next to the `.exe`) does not exist yet.
+- English UI, README, and docs.
 
-## v0.4
+## v0.5
 
-- **English UI and the remaining docs.** Translate all panel text, the user guide, and the rest of
-  `docs/` in one pass so app terms and docs stay consistent.
-- **Split `main.js`.** Separate the render loop, sync, and UI. Profiles already live in their own
-  module; presets and the rest of the UI follow without changing behavior.
+- **Performance pass.** Done, apart from anything measured later: MediaPipe gets a 480×360 frame on
+  the CPU processor or a tracking rate of 20 Hz and below, the pose relay no longer allocates an array
+  every frame, window resizing is coalesced and skipped when nothing changed, and shaders are compiled
+  when an avatar loads instead of during the first draw. Numbers are estimates from pixel counts, not
+  profiler runs on Windows.
+- **Split `main.js`.** Not done. Only the tracking-resolution decision moved to `src/track-scale.js`;
+  the render loop, server sync, and UI wiring are still in one file.
+- **Hotkeys/Stream Deck.** Not started; this is the feature part of 0.5 if it stays in this version.
 
 ## Later
 
 - **MSIX and the Microsoft Store.** The cheapest way to remove SmartScreen, because the Store
   re-signs the package.
-- **Hotkeys/Stream Deck.** Switch expression, background, or profile from a button.
+- **Hotkeys/Stream Deck.** Switch expression, background, or profile from a button, if it does not
+  fit in 0.5.
 - **Auto-update.** Needs a signed installer first.
 - **Hand tracking.** Deferred until full-body framing is actually needed; the cost is an extra model,
   finger bones that VRM files may not have, and higher latency.
