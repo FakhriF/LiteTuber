@@ -23,14 +23,14 @@ export function inspectVrm(bytes) {
   if (!bytes || bytes.length < 12) return { ok: false, needMore: true };
 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (view.getUint32(0, true) !== GLB_MAGIC) return fail("bukan file GLB");
-  if (view.getUint32(4, true) !== 2) return fail("versi glTF bukan 2");
+  if (view.getUint32(0, true) !== GLB_MAGIC) return fail("not a GLB file");
+  if (view.getUint32(4, true) !== 2) return fail("glTF version is not 2");
   if (bytes.length < 20) return { ok: false, needMore: true };
 
   const jsonLength = view.getUint32(12, true);
-  if (view.getUint32(16, true) !== CHUNK_JSON) return fail("chunk pertama bukan JSON");
-  if (jsonLength === 0) return fail("chunk JSON kosong");
-  if (jsonLength > MAX_JSON_CHUNK) return fail("chunk JSON terlalu besar");
+  if (view.getUint32(16, true) !== CHUNK_JSON) return fail("first chunk is not JSON");
+  if (jsonLength === 0) return fail("JSON chunk is empty");
+  if (jsonLength > MAX_JSON_CHUNK) return fail("JSON chunk is too large");
   if (bytes.length < 20 + jsonLength) return { ok: false, needMore: true };
 
   let json;
@@ -41,13 +41,13 @@ export function inspectVrm(bytes) {
       .trim();
     json = JSON.parse(text);
   } catch {
-    return fail("JSON avatar rusak");
+    return fail("avatar JSON is corrupted");
   }
 
   const extensions = json?.extensions || {};
   const used = Array.isArray(json?.extensionsUsed) ? json.extensionsUsed : [];
   const isVrm = extensions.VRM || extensions.VRMC_vrm || used.includes("VRM") || used.includes("VRMC_vrm");
-  if (!isVrm) return fail("tidak ada data VRM");
+  if (!isVrm) return fail("no VRM data");
 
   const meta = extensions.VRMC_vrm?.meta || extensions.VRM?.meta || {};
   return { ok: true, title: String(meta.name || meta.title || "") };

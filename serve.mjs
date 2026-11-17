@@ -116,7 +116,7 @@ async function writeFileLimited(req, file, limit, validate) {
         } else if (!check.needMore) {
           throw Object.assign(new Error(check.reason || "invalid avatar"), { code: 415 });
         } else if (prefix.length > 20 * 1024 * 1024) {
-          throw Object.assign(new Error("header avatar terlalu besar"), { code: 415 });
+          throw Object.assign(new Error("avatar header is too large"), { code: 415 });
         }
       }
 
@@ -130,7 +130,7 @@ async function writeFileLimited(req, file, limit, validate) {
     if (!validated) {
       const check = validate(prefix);
       if (!check.ok) {
-        throw Object.assign(new Error(check.reason || "avatar tidak lengkap"), { code: 415 });
+        throw Object.assign(new Error(check.reason || "avatar is incomplete"), { code: 415 });
       }
     }
     await new Promise((resolve, reject) => {
@@ -303,7 +303,7 @@ async function snapshotProfile(name) {
 
 async function applyProfile(id) {
   const meta = await readProfileMeta(id);
-  if (!meta) throw Object.assign(new Error("Profil tidak ditemukan."), { code: 404 });
+  if (!meta) throw Object.assign(new Error("Profile not found."), { code: 404 });
   const dir = path.join(profilesDir, id);
   await copyIfExists(path.join(dir, "avatar.vrm"), avatarPath);
   await copyIfExists(path.join(dir, "background.json"), bgPath);
@@ -440,7 +440,7 @@ async function handleApi(req, res, pathname, query) {
     try {
       const body = JSON.parse((await readBody(req, 4 * 1024)).toString("utf8") || "{}");
       const name = normalizeProfileName(body.name);
-      if (!name) throw Object.assign(new Error("Nama profil wajib diisi."), { code: 400 });
+      if (!name) throw Object.assign(new Error("Profile name is required."), { code: 400 });
       sendJson(res, 200, { ok: true, ...(await snapshotProfile(name)) });
     } catch (err) {
       const code = err.code === 409 || err.code === 413 ? err.code : 400;
@@ -454,7 +454,7 @@ async function handleApi(req, res, pathname, query) {
     const id = profileMatch[1];
     const meta = await readProfileMeta(id);
     if (!meta) {
-      sendJson(res, 404, { error: "Profil tidak ditemukan." });
+      sendJson(res, 404, { error: "Profile not found." });
       return true;
     }
     await fsp.rm(path.join(profilesDir, id), { recursive: true, force: true });
@@ -647,10 +647,10 @@ server.on("upgrade", (req, socket, head) => {
 
 server.listen(port, "127.0.0.1", () => {
   console.log("");
-  console.log("  LiteTuber siap");
-  console.log(`  Buka di browser : http://127.0.0.1:${port}/`);
-  console.log(`  URL untuk OBS   : http://127.0.0.1:${port}/?ui=0`);
-  console.log(`  Data tersimpan  : ${dataDir}`);
+  console.log("  LiteTuber is ready");
+  console.log(`  Open in browser : http://127.0.0.1:${port}/`);
+  console.log(`  OBS URL         : http://127.0.0.1:${port}/?ui=0`);
+  console.log(`  Data stored in  : ${dataDir}`);
   console.log("");
-  console.log("  Ctrl+C untuk berhenti");
+  console.log("  Ctrl+C to stop");
 });

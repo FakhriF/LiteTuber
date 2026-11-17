@@ -71,10 +71,10 @@ export function sanitizePresets(list) {
 export function savePreset(list, name, settings, now = Date.now()) {
   const presets = sanitizePresets(list);
   const clean = normalizeName(name);
-  if (!clean) return { presets, error: "Beri nama preset dulu." };
+  if (!clean) return { presets, error: "Give the preset a name first." };
   const picked = pickPreset(settings);
   if (!Object.keys(picked).length) {
-    return { presets, error: "Tidak ada setelan yang bisa disimpan." };
+    return { presets, error: "There are no settings to save." };
   }
   const key = clean.toLowerCase();
   const replaced = presets.some((preset) => preset.name.toLowerCase() === key);
@@ -115,7 +115,7 @@ export function importPresets(list, payload) {
   const current = sanitizePresets(list);
   const incoming = sanitizePresets(Array.isArray(payload) ? payload : payload?.presets);
   if (!incoming.length) {
-    return { presets: current, added: 0, skipped: 0, dropped: 0, error: "File tidak berisi preset valid." };
+    return { presets: current, added: 0, skipped: 0, dropped: 0, error: "The file contains no valid presets." };
   }
   const names = new Set(current.map((preset) => preset.name.toLowerCase()));
   const merged = [...current];

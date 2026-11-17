@@ -93,19 +93,19 @@ pub fn spawn(listener: StdTcpListener, data_dir: PathBuf) {
             {
                 Ok(runtime) => runtime,
                 Err(err) => {
-                    eprintln!("litetuber: gagal membuat runtime: {err}");
+                    eprintln!("litetuber: could not create the runtime: {err}");
                     return;
                 }
             };
 
             runtime.block_on(async move {
                 if let Err(err) = listener.set_nonblocking(true) {
-                    eprintln!("litetuber: set_nonblocking gagal: {err}");
+                    eprintln!("litetuber: set_nonblocking failed: {err}");
                 }
                 let listener = match tokio::net::TcpListener::from_std(listener) {
                     Ok(listener) => listener,
                     Err(err) => {
-                        eprintln!("litetuber: listener tidak valid: {err}");
+                        eprintln!("litetuber: invalid listener: {err}");
                         return;
                     }
                 };
@@ -392,7 +392,7 @@ async fn put_state(State(state): State<Arc<AppState>>, body: Bytes) -> Response 
     if body.len() > MAX_STATE_BYTES {
         return json_response(
             StatusCode::PAYLOAD_TOO_LARGE,
-            json!({ "error": "state terlalu besar" }),
+            json!({ "error": "state is too large" }),
             &[],
         );
     }
@@ -550,7 +550,7 @@ async fn put_avatar(
 
         size += chunk.len() as u64;
         if size > MAX_AVATAR_BYTES {
-            failure = Some((StatusCode::PAYLOAD_TOO_LARGE, "avatar terlalu besar".into()));
+            failure = Some((StatusCode::PAYLOAD_TOO_LARGE, "avatar is too large".into()));
             break;
         }
 
@@ -569,7 +569,7 @@ async fn put_avatar(
                     if prefix.len() > 20 * 1024 * 1024 {
                         failure = Some((
                             StatusCode::UNSUPPORTED_MEDIA_TYPE,
-                            "header avatar terlalu besar".into(),
+                            "avatar header is too large".into(),
                         ));
                         break;
                     }
@@ -592,7 +592,7 @@ async fn put_avatar(
             vrm::VrmCheck::NeedMore => {
                 failure = Some((
                     StatusCode::UNSUPPORTED_MEDIA_TYPE,
-                    "avatar tidak lengkap".into(),
+                    "avatar is incomplete".into(),
                 ));
             }
         }
@@ -670,7 +670,7 @@ async fn put_background(State(state): State<Arc<AppState>>, body: Bytes) -> Resp
     if body.len() > MAX_BACKGROUND_BYTES {
         return json_response(
             StatusCode::PAYLOAD_TOO_LARGE,
-            json!({ "error": "background terlalu besar" }),
+            json!({ "error": "background is too large" }),
             &[],
         );
     }
@@ -855,7 +855,7 @@ async fn snapshot_profile(
     if existing.is_none() && all_profiles(&state.data_dir).await.len() >= MAX_PROFILES {
         return Err((
             StatusCode::CONFLICT,
-            format!("Profil penuh (maksimal {MAX_PROFILES})."),
+            format!("Profile limit reached (max {MAX_PROFILES})."),
         ));
     }
 
@@ -924,7 +924,7 @@ async fn create_profile(State(state): State<Arc<AppState>>, body: Bytes) -> Resp
     if body.len() > MAX_PROFILE_BODY_BYTES {
         return json_response(
             StatusCode::PAYLOAD_TOO_LARGE,
-            json!({ "error": "permintaan terlalu besar" }),
+            json!({ "error": "request is too large" }),
             &[],
         );
     }
@@ -942,7 +942,7 @@ async fn create_profile(State(state): State<Arc<AppState>>, body: Bytes) -> Resp
     if name.is_empty() {
         return json_response(
             StatusCode::BAD_REQUEST,
-            json!({ "error": "Nama profil wajib diisi." }),
+            json!({ "error": "Profile name is required." }),
             &[],
         );
     }
@@ -963,7 +963,7 @@ async fn delete_profile(
     if read_profile_meta(&state.data_dir, &id).await.is_none() {
         return json_response(
             StatusCode::NOT_FOUND,
-            json!({ "error": "Profil tidak ditemukan." }),
+            json!({ "error": "Profile not found." }),
             &[],
         );
     }
@@ -984,7 +984,7 @@ async fn apply_profile(
     let Some(meta) = read_profile_meta(&state.data_dir, &id).await else {
         return json_response(
             StatusCode::NOT_FOUND,
-            json!({ "error": "Profil tidak ditemukan." }),
+            json!({ "error": "Profile not found." }),
             &[],
         );
     };

@@ -217,7 +217,7 @@ export class FaceTracker {
         if (err?.name === "NotAllowedError" || err?.name === "SecurityError") throw err;
       }
     }
-    if (!this.stream) throw lastError || new Error("Kamera tidak tersedia");
+    if (!this.stream) throw lastError || new Error("Camera not available");
 
     if (this.video) {
       this.video.srcObject = this.stream;

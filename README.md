@@ -4,7 +4,7 @@ LiteTuber shows a VRM avatar in the browser. The head, eyes, and mouth follow yo
 and the result is used as an OBS Browser Source. Supported models are VRM 0.x and 1.0; Live2D is not
 supported. Everything runs on your own computer.
 
-User guide: [docs/PANDUAN.md](docs/PANDUAN.md) (Indonesian). What comes next: [ROADMAP.md](ROADMAP.md).
+User guide: [docs/PANDUAN.md](docs/PANDUAN.md). What comes next: [ROADMAP.md](ROADMAP.md).
 
 ## Install on Windows
 
@@ -54,7 +54,7 @@ Open `http://127.0.0.1:8770/`. To run the server without rebuilding, use `npm ru
    panel.
 
 OBS does not open the camera itself. The panel sends movement to OBS through the local server. The
-**Tampilan** tab has an **OBS off / OBS 1** badge that shows whether OBS is connected.
+**Display** tab has an **OBS off / OBS 1** badge that shows whether OBS is connected.
 
 After an update, right-click the OBS source and choose **Refresh**. The URL does not change.
 
@@ -101,7 +101,7 @@ computer are covered in [docs/PANDUAN.md](docs/PANDUAN.md).
 - **The panel is in the recording**: use the `?ui=0` URL, not the panel URL.
 - **Avatar is frozen in OBS**: the panel must be open and not minimized. Refresh the OBS source, then
   check the **OBS 1** badge.
-- **Quality drops on its own**: that is the automatic adjustment. Turn it off in the Tampilan tab if
+- **Quality drops on its own**: that is the automatic adjustment. Turn it off in the Display tab if
   you do not want it.
 
 More problems and full steps are in [docs/PANDUAN.md](docs/PANDUAN.md).

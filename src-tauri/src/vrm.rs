@@ -76,7 +76,7 @@ pub fn inspect(bytes: &[u8]) -> VrmCheck {
     if has_vrm {
         VrmCheck::Valid
     } else {
-        VrmCheck::Invalid("tidak ada data VRM")
+        VrmCheck::Invalid("no VRM data")
     }
 }
 
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn rejects_plain_gltf_without_vrm() {
         let file = glb(2, CHUNK_JSON, br#"{"asset":{"version":"2.0"}}"#);
-        assert_eq!(inspect(&file), VrmCheck::Invalid("tidak ada data VRM"));
+        assert_eq!(inspect(&file), VrmCheck::Invalid("no VRM data"));
     }
 
     #[test]

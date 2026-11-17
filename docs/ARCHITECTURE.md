@@ -1,29 +1,34 @@
-# Arsitektur LiteTuber
+# LiteTuber architecture
 
-Dokumen ini menjelaskan bentuk sistem, alasan di balik keputusan penting, dan aturan yang tidak boleh dilanggar saat mengubah kode. Tujuannya supaya perubahan berikutnya tidak diam-diam merusak alur OBS.
+This document explains the shape of the system, the reasons behind important decisions, and the rules
+that must not be broken when changing the code. The goal is to keep later changes from quietly
+breaking the OBS flow.
 
-## Prinsip
+## Principles
 
-1. **Ringan.** Satu tab browser, tanpa framework UI, tanpa Electron/Unity.
-2. **OBS-first.** URL yang dibuka panel dan URL yang dipasang di OBS Browser Source harus sama persis: `http://127.0.0.1:8770/`.
-3. **Server lokal adalah sumber kebenaran.** Setelan, avatar, dan background disimpan di `data/`, bukan hanya di browser. Ini yang membuat panel dan OBS sinkron otomatis.
-4. **Tidak ada data keluar.** Server hanya bind ke `127.0.0.1` dan menolak Host/Origin asing.
+1. **Lightweight.** One browser tab, no UI framework, no Electron/Unity.
+2. **OBS-first.** The URL the panel opens and the URL configured in the OBS Browser Source must match
+   exactly: `http://127.0.0.1:8770/`.
+3. **The local server is the source of truth.** Settings, avatars, and backgrounds are stored in
+   `data/`, not only in the browser. This is what keeps the panel and OBS in sync automatically.
+4. **No data leaves the machine.** The server binds only to `127.0.0.1` and rejects foreign
+   Host/Origin headers.
 
-## Alur data
+## Data flow
 
 ```
-          kamera                         mic
+          camera                         mic
             │                             │
             ▼                             ▼
    ┌─────────────────┐          ┌─────────────────┐
    │ face-worker.js  │          │ audio.js         │
    │ MediaPipe       │          │ FFT → vowel      │
    └────────┬────────┘          └────────┬─────────┘
-            │ 52 blendshape + matrix     │ bobot a/i/u/e/o
+            │ 52 blendshapes + matrix    │ a/i/u/e/o weights
             ▼                            ▼
    ┌──────────────────────────────────────────────┐
    │ face.js / MicMouth                           │
-   │ → ekspresi VRM, rotasi kepala, kalibrasi     │
+   │ → VRM expressions, head turn, calibration    │
    └──────────────────────┬───────────────────────┘
                           ▼
    ┌──────────────────────────────────────────────┐
@@ -34,102 +39,128 @@ Dokumen ini menjelaskan bentuk sistem, alasan di balik keputusan penting, dan at
                  canvas → OBS Browser Source
 
    Panel UI ──PUT /api/state──▶ serve.mjs ──data/state.json
-   OBS      ──GET /api/state──▶ serve.mjs (poll ±2,5 dtk)
+   OBS      ──GET /api/state──▶ serve.mjs (polls ~2.5 s)
    Upload   ──PUT /api/avatar─▶ serve.mjs ──data/avatar.vrm
    Panel    ──WS /ws/pose────▶ serve.mjs ──pose──▶ OBS (live, 33 Hz)
 ```
 
-## Modul
+## Modules
 
-| File | Tanggung jawab |
+| File | Responsibility |
 |---|---|
-| `src/main.js` | Entry, render loop, adaptive quality, wiring UI, polling server, background |
-| `src/avatar.js` | Load VRM, optimasi mesh, idle pose, ekspresi, spring bone |
-| `src/face.js` | Orkestrasi tracking: pilih worker/main-thread, kalibrasi, konversi ke VRM |
-| `src/expressions.js` | Konversi blendshape ke ekspresi VRM, termasuk blink per mata (murni, bisa dites) |
-| `src/face-worker.js` | Entry classic worker: init MediaPipe, inferensi per `ImageBitmap` |
-| `src/pose-sync.js` | Klien WebSocket relay pose panel → OBS, reconnect dengan backoff |
-| `src/pose-protocol.js` | Validasi dan normalisasi pesan pose, dipakai klien dan server |
-| `src/audio.js` | Analisis mic, `vowelWeights`, smoothing mulut |
-| `src/store.js` | Default setelan, localStorage, cache IndexedDB |
-| `src/vrm.js` | Validasi header GLB/VRM, dipakai klien dan server |
-| `src/http-cache.js` | ETag dari revisi + mtime/size, dipakai `/api/state` |
-| `serve.mjs` | Static server + REST API, validasi upload, tulis atomik |
-| `index.html` | Panel kontrol (bukan framework; event di-wire manual) |
-| `src/style.css` | Semua styling panel dan background |
+| `src/main.js` | Entry, render loop, adaptive quality, UI wiring, server polling, background |
+| `src/avatar.js` | Load VRM, mesh optimization, idle pose, expressions, spring bones |
+| `src/face.js` | Tracking orchestration: choose worker/main thread, calibration, conversion to VRM |
+| `src/expressions.js` | Convert blendshapes to VRM expressions, including per-eye blink (pure, testable) |
+| `src/face-worker.js` | Classic worker entry: init MediaPipe, inference per `ImageBitmap` |
+| `src/pose-sync.js` | WebSocket relay client panel → OBS, reconnect with backoff |
+| `src/pose-protocol.js` | Validate and normalize pose messages, used by client and server |
+| `src/audio.js` | Mic analysis, `vowelWeights`, mouth smoothing |
+| `src/store.js` | Settings defaults, localStorage, IndexedDB cache |
+| `src/vrm.js` | Validate GLB/VRM headers, used by client and server |
+| `src/http-cache.js` | ETag from write revision + mtime/size, used by `/api/state` |
+| `serve.mjs` | Static server + REST API, upload validation, atomic writes |
+| `index.html` | Control panel (no framework; events wired by hand) |
+| `src/style.css` | All panel and background styling |
 
-## Aturan yang tidak boleh dilanggar
+## Rules that must not be broken
 
-### 1. Worker tracking harus classic, bukan module
+### 1. The tracking worker must be classic, not a module
 
-Glue WASM MediaPipe memanggil `importScripts`, yang tidak tersedia di module worker. Karena itu `vite.config.js` memakai `worker: { format: "iife" }` dan `face-worker.js` diimpor lewat `?worker`.
+The MediaPipe WASM glue calls `importScripts`, which a module worker does not provide. That is why
+`vite.config.js` uses `worker: { format: "iife" }` and `face-worker.js` is imported through `?worker`.
 
-- Worker dianggap gagal kalau tidak mengirim `ready` dalam 12 detik atau mengirim `error`.
-- Fallback ke main thread bersifat otomatis dan tidak boleh setengah jalan: `mode` hanya `"worker"` atau `"main"`.
-- `?worker=0` memaksa jalur main thread untuk diagnosa.
-- Frame hanya dikirim saat worker tidak sibuk. Jangan membuat antrean frame; latensi lebih penting daripada kelengkapan.
+- A worker counts as failed if it does not send `ready` within 12 seconds or sends `error`.
+- The fallback to the main thread is automatic and must not run halfway: `mode` is only `"worker"` or
+  `"main"`.
+- `?worker=0` forces the main-thread path for diagnosis.
+- Frames are only sent while the worker is idle. Do not build a frame queue; latency matters more than
+  completeness.
 
-### 2. Jangan pindah ke protokol `tauri://` atau URL lain
+### 2. Do not switch to the `tauri://` protocol or another URL
 
-Desktop memakai Tauri, tetapi jendelanya tetap membuka `http://127.0.0.1:8770/`. OBS Browser Source memakai URL yang sama. Kalau protokol berubah, alur dua langkah (jalankan, tempel URL) rusak.
+The desktop app uses Tauri, but its window still opens `http://127.0.0.1:8770/`. The OBS Browser Source
+uses the same URL. If the protocol changes, the two-step flow (start it, paste the URL) breaks.
 
-Server desktop adalah port Rust dari `serve.mjs` di `src-tauri/src/server.rs`. Endpoint, ETag, validasi VRM, dan relay pose harus tetap sama dengan versi Node. Jendela dibuat setelah port berhasil di-bind; kalau port sudah dipakai, app memakai server yang ada.
+The desktop server is a Rust port of `serve.mjs` in `src-tauri/src/server.rs`. Endpoints, ETag, VRM
+validation, and the pose relay must stay identical to the Node version. The window is created after
+the port is bound successfully; if the port is already in use, the app reuses the existing server.
 
-### 3. Server adalah bus sinkronisasi
+### 3. The server is the synchronization bus
 
-- Panel menulis setelan ke server; OBS tidak perlu tahu apa pun selain mem-poll.
-- `panelHidden` sengaja tidak disinkronkan karena itu state per-jendela.
-- State dibandingkan lewat ETag dari revisi tulis + mtime/size, bukan `JSON.stringify` tiap poll. Jangan menambah polling lebih cepat sebagai pengganti versi.
-- Tulis file selalu atomik (`.part` untuk upload avatar, `.tmp` untuk state/background, lalu `rename`). Jangan menulis langsung ke `avatar.vrm`, `state.json`, atau `background.json`.
-- Pose live **tidak** lewat state/poll. Panel mengirim `{w, head}` ke `/ws/pose` ±33 Hz, dan server hanya meneruskan ke viewer `?ui=0`. Jangan menulis pose ke `data/`; itu data sesi, bukan setelan.
-- Server mengirim `{t:"status", viewers}` ke panel setiap viewer masuk/keluar. Panel memakainya hanya untuk badge OBS; status ini bukan state yang disimpan.
+- The panel writes settings to the server; OBS only needs to poll.
+- `panelHidden` is intentionally not synced because it is per-window state.
+- State is compared through an ETag built from the write revision + mtime/size, not through
+  `JSON.stringify` on every poll. Do not add faster polling as a substitute for versioning.
+- File writes are always atomic (`.part` for avatar uploads, `.tmp` for state/background, then
+  `rename`). Never write directly to `avatar.vrm`, `state.json`, or `background.json`.
+- Live pose does **not** go through state/polling. The panel sends `{w, head}` to `/ws/pose` at about
+  33 Hz, and the server only forwards it to `?ui=0` viewers. Do not write pose to `data/`; it is
+  session data, not a setting.
+- The server sends `{t:"status", viewers}` to the panel whenever a viewer joins or leaves. The panel
+  only uses it for the OBS badge; this status is not saved state.
 
-### 4. Upload divalidasi sebelum dipakai
+### 4. Uploads are validated before use
 
-- Klien memeriksa `src/vrm.js` sebelum memuat avatar, supaya file salah tidak dikirim 15 MB.
-- Server memeriksa prefiks stream yang sama. File non-VRM ditolak `415` dan avatar lama tidak tersentuh.
-- `GLB` harus: magic `glTF`, versi 2, chunk pertama JSON, dan berisi ekstensi `VRM` atau `VRMC_vrm`.
+- The client checks `src/vrm.js` before loading an avatar, so a wrong file is not sent as 15 MB.
+- The server checks the same stream prefix. Non-VRM files are rejected with `415` and the old avatar
+  is left untouched.
+- `GLB` must have the `glTF` magic, version 2, a JSON first chunk, and a `VRM` or `VRMC_vrm` extension.
 
-### 5. Kualitas tidak boleh turun di bawah batas tanpa alasan
+### 5. Quality must not drop below the limit without a reason
 
-Adaptive quality hanya boleh menurunkan `renderScale`/`trackHz` ketika FPS di bawah target. Nilai pilihan pengguna adalah plafon: kualitas otomatis tidak boleh melebihi setelan manual. Saat beban ringan, nilai dinaikkan bertahap kembali ke plafon.
+Adaptive quality may only lower `renderScale`/`trackHz` when FPS is below target. The user's chosen
+values are the ceiling: auto quality must not exceed the manual setting. When the load is light, the
+values rise again gradually back to the ceiling.
 
-- Antialias hanya aktif saat `renderScale >= 0.9`; renderer dibangun ulang di canvas off-DOM, dan render sekali setelah swap supaya canvas tidak sempat kosong.
-- Badge FPS menampilkan skala aktif (`28 fps · 45%`) agar perilaku ini terlihat.
+- Antialiasing is only on when `renderScale >= 0.9`; the renderer is rebuilt on an off-DOM canvas, and
+  rendered once after the swap so the canvas is never blank.
+- The FPS badge shows the active scale (`28 fps · 45%`) so this behavior is visible.
 
-### 6. Data plane bebas DOM
+### 6. The data plane is DOM-free
 
-`face.js`, `audio.js`, `avatar.js`, dan `vrm.js` tidak boleh menyentuh DOM panel. Satu-satunya elemen yang boleh dibuat adalah `<video>` internal untuk kamera. Ini yang membuat modul tersebut bisa dites tanpa browser penuh.
+`face.js`, `audio.js`, `avatar.js`, and `vrm.js` must not touch the panel DOM. The only element they
+may create is the internal `<video>` for the camera. This is what makes those modules testable without
+a full browser.
 
-## Jalur state
+## State path
 
-1. UI mengubah `settings` → `store.saveSettings` (debounce 120 ms) → `pushSettings` (debounce 350 ms) → `PUT /api/state`.
-2. Klien lain memanggil `GET /api/state` tiap ±2,5 detik dengan `If-None-Match` berisi ETag terakhir.
-3. ETag dihitung dari revisi tulis + mtime/size `state.json`, `avatar.vrm`, dan `background.json`. Kalau tidak berubah, server menjawab `304` tanpa body, jadi klien tidak perlu parse JSON.
-4. Saat berubah, `applyServerSettings` membandingkan state, lalu `Object.assign` + `syncUI` + apply background/framing/scale. Flag `applyingServer` mencegah echo balik ke server.
-5. Avatar/background hanya diunduh ulang kalau `mtime` berubah.
+1. The UI changes `settings` → `store.saveSettings` (120 ms debounce) → `pushSettings` (350 ms
+   debounce) → `PUT /api/state`.
+2. Other clients call `GET /api/state` about every 2.5 seconds with `If-None-Match` containing the
+   last ETag.
+3. The ETag is computed from the write revision + mtime/size of `state.json`, `avatar.vrm`, and
+   `background.json`. If nothing changed, the server answers `304` with no body, so clients do not
+   need to parse JSON.
+4. When it changes, `applyServerSettings` compares the state, then does `Object.assign` + `syncUI` +
+   apply background/framing/scale. The `applyingServer` flag prevents an echo back to the server.
+5. Avatar/background are only downloaded again when `mtime` changes.
 
-Semua tulis state/background memakai file sementara lalu `rename`, dan read-modify-write diserialisasi supaya dua penyimpanan cepat tidak saling menimpa.
+All state/background writes use a temporary file then `rename`, and read-modify-write is serialized so
+two quick saves cannot overwrite each other.
 
-Keterbatasan yang diketahui: last-write-wins jika dua klien menulis settings pada saat yang sama, dan tiga lapisan cache (localStorage, IndexedDB, `data/`). Cukup untuk satu panel + satu OBS.
+Known limits: last-write-wins if two clients write settings at the same time, and three cache layers
+(localStorage, IndexedDB, `data/`). That is enough for one panel + one OBS.
 
-## Build dan tes
+## Build and tests
 
 ```bash
 npm install
-npm test        # Vitest: validator VRM, vowelWeights, merge setelan
+npm test        # Vitest: VRM validator, vowelWeights, settings merge
 npm run build   # dist/ (gitignored)
 npm run serve   # PORT=8770
-cargo test --manifest-path src-tauri/Cargo.toml   # server Rust + pose + VRM
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust server + pose + VRM
 ```
 
-- `dist/` tidak di-commit.
-- Worker menghasilkan bundel IIFE terpisah di `dist/assets/`; itu normal.
-- CI (`.github/workflows/ci.yml`) menjalankan `npm ci`, `npm test`, dan `npm run build` di Node 22 dan 24.
+- `dist/` is not committed.
+- The worker produces a separate IIFE bundle in `dist/assets/`; that is normal.
+- CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm test`, and `npm run build` on Node 22 and 24.
 
-## Catatan deployment
+## Deployment notes
 
 - **Portable/browser:** `dist/` + `serve.mjs` + Node 18+.
-- **Tauri:** server Rust menyajikan `dist/` yang di-embed dengan endpoint dan URL identik; data di `%APPDATA%\app.litetuber.desktop\`. Installer Windows dibangun di Windows/CI Windows. Detail di [DESKTOP.md](DESKTOP.md).
-- **Microsoft Store:** jalur MSIX (signing gratis oleh Microsoft). EXE/MSI butuh sertifikat sendiri.
-- Jangan bundel avatar contoh tanpa izin lisensi VRM yang jelas.
+- **Tauri:** the Rust server serves the embedded `dist/` with identical endpoints and URL; data lives
+  in `%APPDATA%\app.litetuber.desktop\`. The Windows installer is built on Windows/Windows CI. Details
+  in [DESKTOP.md](DESKTOP.md).
+- **Microsoft Store:** the MSIX path (free signing by Microsoft). EXE/MSI needs its own certificate.
+- Do not bundle sample avatars without a clear VRM license.

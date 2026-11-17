@@ -100,7 +100,7 @@ export class MicMouth {
         if (err?.name === "NotAllowedError" || err?.name === "SecurityError") throw err;
       }
     }
-    if (!this.stream) throw lastError || new Error("Mic tidak tersedia");
+    if (!this.stream) throw lastError || new Error("Mic not available");
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (this.ctx.state === "suspended") {
       await Promise.race([

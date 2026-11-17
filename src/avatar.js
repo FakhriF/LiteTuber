@@ -108,7 +108,7 @@ export class VrmAvatar {
     });
 
     const vrm = gltf.userData.vrm;
-    if (!vrm) throw new Error("File ini bukan VRM yang valid.");
+    if (!vrm) throw new Error("This file is not a valid VRM.");
 
     try {
       if (typeof VRMUtils.removeUnnecessaryVertices === "function") {

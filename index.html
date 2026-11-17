@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -15,7 +15,7 @@
     <div id="hint" class="hint">
       <div>
         <strong>LiteTuber</strong>
-        <p>Tarik file <code>.vrm</code> ke sini, atau klik <em>Pilih .vrm</em> di panel.</p>
+        <p>Drag a <code>.vrm</code> file here, or click <em>Choose .vrm</em> in the panel.</p>
       </div>
     </div>
 
@@ -23,38 +23,38 @@
       <header>
         <span class="logo">LiteTuber</span>
         <span id="fps" class="badge">0 fps</span>
-        <button id="hideBtn" class="icon" title="Sembunyikan panel (H)">–</button>
+        <button id="hideBtn" class="icon" title="Hide panel (H)">–</button>
       </header>
 
-      <nav class="tabs" role="tablist" aria-label="Kategori pengaturan">
+      <nav class="tabs" role="tablist" aria-label="Settings categories">
         <button type="button" data-tab="avatar" class="on">Avatar</button>
-        <button type="button" data-tab="face">Wajah</button>
-        <button type="button" data-tab="mouth">Mulut</button>
-        <button type="button" data-tab="display">Tampilan</button>
+        <button type="button" data-tab="face">Face</button>
+        <button type="button" data-tab="mouth">Mouth</button>
+        <button type="button" data-tab="display">Display</button>
       </nav>
 
       <div class="body">
         <section data-tab="avatar">
           <h3>Avatar</h3>
           <div class="row">
-            <button id="pickVrm" class="primary grow">Pilih .vrm</button>
-            <button id="clearVrm" class="icon" title="Lupakan avatar tersimpan">✕</button>
+            <button id="pickVrm" class="primary grow">Choose .vrm</button>
+            <button id="clearVrm" class="icon" title="Forget saved avatar">✕</button>
           </div>
           <input type="file" id="vrmFile" accept=".vrm" hidden />
-          <p id="vrmName" class="muted">belum ada avatar</p>
+          <p id="vrmName" class="muted">no avatar yet</p>
         </section>
 
         <section data-tab="face">
-          <h3>Tracking wajah</h3>
+          <h3>Face tracking</h3>
           <div class="row">
-            <button id="camBtn" class="grow">Aktifkan kamera</button>
-            <button id="calBtn" disabled title="Kalibrasi posisi netral (R)">Kalibrasi</button>
+            <button id="camBtn" class="grow">Start camera</button>
+            <button id="calBtn" disabled title="Calibrate neutral position (R)">Calibrate</button>
           </div>
           <select id="camDevice" class="device" hidden>
-            <option value="">Kamera default</option>
+            <option value="">Default camera</option>
           </select>
           <label class="slider">
-            <span>Sensitivitas</span>
+            <span>Sensitivity</span>
             <input id="sens" type="range" min="0.3" max="2.2" step="0.05" />
             <output id="sensOut"></output>
           </label>
@@ -63,87 +63,87 @@
             <input id="smooth" type="range" min="0" max="0.9" step="0.02" />
             <output id="smoothOut"></output>
           </label>
-          <label class="check"><input id="mirror" type="checkbox" checked /> Mirror (seperti selfie)</label>
+          <label class="check"><input id="mirror" type="checkbox" checked /> Mirror (like a selfie)</label>
 
           <details class="adv">
-            <summary>Lanjutan</summary>
+            <summary>Advanced</summary>
             <div class="row toggles">
-              <label class="check"><input id="invX" type="checkbox" /> Balik X</label>
-              <label class="check"><input id="invY" type="checkbox" /> Balik Y</label>
-              <label class="check"><input id="invZ" type="checkbox" /> Balik Z</label>
+              <label class="check"><input id="invX" type="checkbox" /> Invert X</label>
+              <label class="check"><input id="invY" type="checkbox" /> Invert Y</label>
+              <label class="check"><input id="invZ" type="checkbox" /> Invert Z</label>
             </div>
             <label class="select">
-              <span>Prosesor tracking</span>
+              <span>Tracking processor</span>
               <select id="delegate">
-                <option value="GPU">GPU (cepat)</option>
-                <option value="CPU">CPU (kompatibel)</option>
+                <option value="GPU">GPU (fast)</option>
+                <option value="CPU">CPU (compatible)</option>
               </select>
             </label>
-            <p class="muted small">Kalau kepala bergerak ke arah yang salah, coba Balik X/Y/Z.</p>
+            <p class="muted small">If the head moves the wrong way, try Invert X/Y/Z.</p>
           </details>
         </section>
 
         <section data-tab="mouth">
-          <h3>Mulut</h3>
+          <h3>Mouth</h3>
           <div class="row">
-            <button id="micBtn" class="grow">Aktifkan mic</button>
-            <select id="mouthSrc" title="Sumber gerak mulut">
-              <option value="both">Kamera + Mic</option>
-              <option value="cam">Kamera saja</option>
-              <option value="mic">Mic saja</option>
+            <button id="micBtn" class="grow">Start mic</button>
+            <select id="mouthSrc" title="Mouth movement source">
+              <option value="both">Camera + Mic</option>
+              <option value="cam">Camera only</option>
+              <option value="mic">Mic only</option>
             </select>
           </div>
           <label class="slider">
-            <span>Sensitivitas mic</span>
+            <span>Mic sensitivity</span>
             <input id="micGain" type="range" min="0.2" max="3" step="0.05" />
             <output id="micGainOut"></output>
           </label>
           <select id="micDevice" class="device" hidden>
-            <option value="">Mic default</option>
+            <option value="">Default mic</option>
           </select>
           <label class="slider">
-            <span>Level mic</span>
+            <span>Mic level</span>
             <div class="meter" id="micMeter"><i></i></div>
             <output id="micDb">–</output>
           </label>
           <div class="row" style="margin-top: 9px">
-            <button id="mouthTest" class="grow">Tes gerak mulut</button>
+            <button id="mouthTest" class="grow">Test mouth movement</button>
           </div>
-          <label class="check"><input id="autoBlink" type="checkbox" checked /> Kedip otomatis</label>
+          <label class="check"><input id="autoBlink" type="checkbox" checked /> Auto blink</label>
         </section>
 
         <section data-tab="face">
-          <h3>Fitur</h3>
+          <h3>Features</h3>
           <div class="row toggles">
-            <label class="check"><input id="useHead" type="checkbox" checked /> Gerak kepala</label>
-            <label class="check"><input id="useEyes" type="checkbox" checked /> Gerak mata</label>
-            <label class="check"><input id="useBlink" type="checkbox" checked /> Kedip (kamera)</label>
-            <label class="check"><input id="useExpr" type="checkbox" checked /> Ekspresi wajah</label>
-            <label class="check"><input id="useIdle" type="checkbox" checked /> Animasi idle</label>
-            <label class="check"><input id="useSpring" type="checkbox" checked /> Fisika rambut</label>
+            <label class="check"><input id="useHead" type="checkbox" checked /> Head movement</label>
+            <label class="check"><input id="useEyes" type="checkbox" checked /> Eye movement</label>
+            <label class="check"><input id="useBlink" type="checkbox" checked /> Blink (camera)</label>
+            <label class="check"><input id="useExpr" type="checkbox" checked /> Facial expressions</label>
+            <label class="check"><input id="useIdle" type="checkbox" checked /> Idle animation</label>
+            <label class="check"><input id="useSpring" type="checkbox" checked /> Hair physics</label>
           </div>
-          <p class="muted small">Matikan yang tidak perlu buat menghemat CPU/GPU.</p>
+          <p class="muted small">Turn off what you do not need to save CPU/GPU.</p>
         </section>
 
         <section data-tab="display">
-          <h3>Latar</h3>
+          <h3>Background</h3>
           <div class="chips" id="bgChips">
-            <button data-bg="transparent">Transparan</button>
+            <button data-bg="transparent">Transparent</button>
             <button data-bg="green">Green</button>
             <button data-bg="blue">Blue</button>
-            <button data-bg="image">Gambar…</button>
+            <button data-bg="image">Image…</button>
           </div>
           <input type="file" id="bgFile" accept="image/*" hidden />
         </section>
 
         <section data-tab="display">
-          <h3>Layar</h3>
+          <h3>Screen</h3>
           <label class="select">
             <span>Framing</span>
             <select id="framing">
-              <option value="bust">Kepala &amp; bahu</option>
-              <option value="upper">Setengah badan</option>
-              <option value="full">Seluruh badan</option>
+              <option value="bust">Head &amp; shoulders</option>
+              <option value="upper">Half body</option>
+              <option value="full">Full body</option>
             </select>
           </label>
           <label class="slider">
@@ -157,86 +157,86 @@
             <output id="exposureOut"></output>
           </label>
           <label class="select">
-            <span>Batas FPS</span>
+            <span>FPS cap</span>
             <select id="fpsCap">
-              <option value="60">60 (lancar)</option>
-              <option value="30">30 (hemat)</option>
+              <option value="60">60 (smooth)</option>
+              <option value="30">30 (power saving)</option>
             </select>
           </label>
           <label class="select">
-            <span>Kualitas render</span>
+            <span>Render quality</span>
             <select id="renderScale">
-              <option value="1">100% (tajam)</option>
+              <option value="1">100% (sharp)</option>
               <option value="0.75">75%</option>
-              <option value="0.5">50% (hemat)</option>
+              <option value="0.5">50% (power saving)</option>
             </select>
           </label>
-          <label class="check"><input id="autoQuality" type="checkbox" checked /> Kualitas otomatis</label>
-          <p class="muted small">Kualitas otomatis menurunkan resolusi lalu rate tracking saat FPS turun, dan mengembalikannya kalau sudah lancar.</p>
+          <label class="check"><input id="autoQuality" type="checkbox" checked /> Auto quality</label>
+          <p class="muted small">Auto quality lowers the resolution, then the tracking rate, when FPS drops, and raises them again once it recovers.</p>
           <label class="select">
-            <span>Rate tracking</span>
+            <span>Tracking rate</span>
             <select id="trackHz">
               <option value="60">60 Hz</option>
-              <option value="30">30 Hz (hemat)</option>
+              <option value="30">30 Hz (power saving)</option>
               <option value="20">20 Hz</option>
-              <option value="15">15 Hz (paling hemat)</option>
+              <option value="15">15 Hz (lowest)</option>
             </select>
           </label>
           <div class="row">
-            <button id="obsBtn" class="grow">Salin URL untuk OBS</button>
-            <span id="obsBadge" class="obs-state" title="Jumlah source OBS yang menerima gerakan">OBS off</span>
+            <button id="obsBtn" class="grow">Copy URL for OBS</button>
+            <span id="obsBadge" class="obs-state" title="Number of OBS sources receiving movement">OBS off</span>
           </div>
-          <p class="muted small">OBS cuma menampilkan. Atur semua di panel browser; gerakan live ikut panel lewat relay lokal. Ukuran source 1920×1080.</p>
+          <p class="muted small">OBS only displays. Set everything in the browser panel; live movement follows the panel through the local relay. Source size 1920×1080.</p>
         </section>
 
         <section data-tab="display">
-          <h3>Profil</h3>
+          <h3>Profile</h3>
           <label class="select">
-            <span>Profil</span>
+            <span>Profile</span>
             <select id="profileList">
-              <option value="">— belum dipilih —</option>
+              <option value="">— none selected —</option>
             </select>
           </label>
           <div class="row" style="margin-top: 9px">
-            <input id="profileName" type="text" class="grow" maxlength="32" placeholder="Nama profil" />
-            <button id="profileSave">Simpan</button>
+            <input id="profileName" type="text" class="grow" maxlength="32" placeholder="Profile name" />
+            <button id="profileSave">Save</button>
           </div>
           <div class="row" style="margin-top: 6px">
-            <button id="profileApply" class="primary grow" disabled>Terapkan</button>
-            <button id="profileDelete" class="icon" title="Hapus profil" disabled>✕</button>
+            <button id="profileApply" class="primary grow" disabled>Apply</button>
+            <button id="profileDelete" class="icon" title="Delete profile" disabled>✕</button>
           </div>
-          <p class="muted small">Profil menyimpan avatar, gambar latar, dan semua setelan sekaligus. Nama yang sama akan memperbarui profil lama. Maksimal 12 profil.</p>
+          <p class="muted small">A profile saves the avatar, background image, and all settings together. The same name updates the old profile. Up to 12 profiles.</p>
 
           <h3 style="margin-top: 18px">Preset</h3>
           <label class="select">
             <span>Preset</span>
             <select id="presetList">
-              <option value="">— belum dipilih —</option>
+              <option value="">— none selected —</option>
             </select>
           </label>
           <div class="row" style="margin-top: 9px">
-            <input id="presetName" type="text" class="grow" maxlength="32" placeholder="Nama preset" />
-            <button id="presetSave">Simpan</button>
+            <input id="presetName" type="text" class="grow" maxlength="32" placeholder="Preset name" />
+            <button id="presetSave">Save</button>
           </div>
           <div class="row" style="margin-top: 6px">
-            <button id="presetApply" class="primary grow" disabled>Terapkan</button>
-            <button id="presetDelete" class="icon" title="Hapus preset" disabled>✕</button>
+            <button id="presetApply" class="primary grow" disabled>Apply</button>
+            <button id="presetDelete" class="icon" title="Delete preset" disabled>✕</button>
           </div>
           <div class="row" style="margin-top: 6px">
-            <button id="presetExport" class="grow">Ekspor JSON</button>
-            <button id="presetImport" class="grow">Impor JSON</button>
+            <button id="presetExport" class="grow">Export JSON</button>
+            <button id="presetImport" class="grow">Import JSON</button>
             <input id="presetFile" type="file" accept="application/json,.json" hidden />
           </div>
-          <p class="muted small">Preset menyimpan framing, zoom, exposure, sensitivitas, smoothing, mirror, sumber mulut, gain mic, FPS, render scale, rate tracking, dan pilihan latar. File gambar dan avatar tidak ikut. Ekspor/impor berguna untuk memindahkan preset ke browser atau PC lain.</p>
+          <p class="muted small">A preset saves framing, zoom, exposure, sensitivity, smoothing, mirror, mouth source, mic gain, FPS, render scale, tracking rate, and background choice. Image and avatar files are not included. Export/import moves presets to another browser or PC.</p>
         </section>
 
       </div>
 
       <div class="statusbar">
-        <span id="statusCam">kamera: off</span>
-        <span id="statusFace">wajah: –</span>
+        <span id="statusCam">cam: off</span>
+        <span id="statusFace">face: –</span>
         <span id="statusMic">mic: off</span>
-        <span id="version" class="version" title="Versi LiteTuber"></span>
+        <span id="version" class="version" title="LiteTuber version"></span>
       </div>
     </aside>
 

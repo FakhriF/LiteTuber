@@ -11,7 +11,7 @@ describe("isFatalMediaError", () => {
   it("allows retries for a missing or busy device", () => {
     expect(isFatalMediaError({ name: "NotFoundError" })).toBe(false);
     expect(isFatalMediaError({ name: "NotReadableError" })).toBe(false);
-    expect(isFatalMediaError(new Error("Mic tidak tersedia"))).toBe(false);
+    expect(isFatalMediaError(new Error("Mic not available"))).toBe(false);
     expect(isFatalMediaError(null)).toBe(false);
   });
 });

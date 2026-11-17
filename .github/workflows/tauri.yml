@@ -46,15 +46,15 @@ jobs:
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('LiteTuber {0}', github.ref_name) || '' }}
           releaseBody: |
-            Installer Windows untuk LiteTuber ${{ github.ref_name }}.
+            Windows installer for LiteTuber ${{ github.ref_name }}.
 
-            - Unduh file `*-setup.exe` di bagian Assets.
-            - Jalankan installer, lalu buka **LiteTuber** dari Start Menu.
-            - Versi tanpa installer ada di `*-portable.zip`: ekstrak, lalu jalankan `LiteTuber.exe`.
-            - Build ini belum ditandatangani, jadi SmartScreen bisa muncul: **More info -> Run anyway**.
-            - Di OBS, tambahkan Browser Source dengan URL `http://127.0.0.1:8770/?ui=0`.
+            - Download the `*-setup.exe` file from Assets.
+            - Run the installer, then open **LiteTuber** from the Start Menu.
+            - The build without an installer is `*-portable.zip`: extract it, then run `LiteTuber.exe`.
+            - This build is not signed, so SmartScreen may appear: **More info -> Run anyway**.
+            - In OBS, add a Browser Source with the URL `http://127.0.0.1:8770/?ui=0`.
 
-            Panduan lengkap ada di https://github.com/FakhriF/LiteTuber/blob/main/docs/PANDUAN.md
+            Full guide: https://github.com/FakhriF/LiteTuber/blob/main/docs/PANDUAN.md
           releaseDraft: false
           prerelease: false
 
@@ -72,25 +72,26 @@ jobs:
           $notes = @"
           LiteTuber $version (portable)
 
-          Jalankan LiteTuber.exe. Tidak perlu installer.
+          Run LiteTuber.exe. No installer needed.
 
-          Data tetap disimpan di:
+          Data is still stored in:
           %APPDATA%\app.litetuber.desktop\
 
-          Artinya setelan, avatar, background, dan profil tidak hilang saat folder ZIP
-          dipindah, tapi juga tidak ikut kalau folder ini disalin ke PC lain.
+          Settings, avatars, backgrounds, and profiles are not lost when the ZIP
+          folder moves, but they do not come along if you copy this folder to
+          another PC.
 
           OBS Browser Source: http://127.0.0.1:8770/?ui=0
-          Panduan: https://github.com/FakhriF/LiteTuber/blob/main/docs/PANDUAN.md
+          Guide: https://github.com/FakhriF/LiteTuber/blob/main/docs/PANDUAN.md
 
-          Build ini belum ditandatangani. Kalau SmartScreen muncul, pilih
+          This build is not signed. If SmartScreen appears, choose
           More info -> Run anyway.
 
-          Butuh WebView2 Runtime. Windows 10/11 biasanya sudah punya.
+          Requires the WebView2 Runtime. Windows 10/11 usually has it already.
           "@
           New-Item -ItemType Directory -Force portable | Out-Null
           Copy-Item src-tauri/target/release/litetuber.exe portable/LiteTuber.exe
-          Set-Content -Path portable/BACA-INI.txt -Value $notes -Encoding UTF8
+          Set-Content -Path portable/README.txt -Value $notes -Encoding UTF8
           Compress-Archive -Path portable/* -DestinationPath "LiteTuber_${version}_x64-portable.zip" -Force
 
       - name: Upload portable ZIP

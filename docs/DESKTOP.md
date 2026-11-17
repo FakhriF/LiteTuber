@@ -1,65 +1,66 @@
-# Aplikasi desktop (Tauri)
+# Desktop app (Tauri)
 
-Scaffold Tauri v2 ada di `src-tauri/`. Tujuannya: installer Windows yang tidak membutuhkan
-Node.js, tanpa mengubah alur OBS.
+The Tauri v2 scaffold is in `src-tauri/`. The goal: a Windows installer that does not need Node.js,
+without changing the OBS flow.
 
-## Prinsip
+## Principles
 
-- Jendela Tauri membuka **`http://127.0.0.1:8770/`**, bukan `tauri://localhost`.
-  Panel browser, jendela desktop, dan OBS Browser Source memakai origin yang sama.
-- Server HTTP tetap jalan di `127.0.0.1:8770`, dijalankan dari dalam proses Rust.
-- Frontend hasil `npm run build` (folder `dist/`) di-embed ke binary saat compile.
-- Data runtime disimpan di folder app-data Tauri, bukan `data/` milik repo.
+- The Tauri window opens **`http://127.0.0.1:8770/`**, not `tauri://localhost`.
+  Browser panel, desktop window, and OBS Browser Source share the same origin.
+- The HTTP server still runs on `127.0.0.1:8770`, started from inside the Rust process.
+- The frontend built by `npm run build` (the `dist/` folder) is embedded into the binary at compile
+  time.
+- Runtime data is stored in the Tauri app-data folder, not the repo's `data/`.
 
-## Isi server Rust
+## What the Rust server does
 
-`src-tauri/src/server.rs` adalah port dari `serve.mjs`:
+`src-tauri/src/server.rs` is a port of `serve.mjs`:
 
-| Endpoint | Perilaku |
+| Endpoint | Behavior |
 |---|---|
-| `GET /` dan file statis | menyajikan `dist/` yang di-embed |
-| `GET/PUT /api/state` | ETag + `304`, tulis atomik, read-modify-write diserialisasi |
-| `GET/PUT/DELETE /api/avatar` | upload streaming, divalidasi header GLB/VRM, `415` kalau bukan VRM |
-| `GET/PUT/DELETE /api/background` | JSON `dataUrl`, tulis atomik |
-| `GET /ws/pose` | relay pose panel -> OBS, validasi + rate limit per socket |
+| `GET /` and static files | serve the embedded `dist/` |
+| `GET/PUT /api/state` | ETag + `304`, atomic writes, serialized read-modify-write |
+| `GET/PUT/DELETE /api/avatar` | streaming upload, GLB/VRM header validation, `415` if not VRM |
+| `GET/PUT/DELETE /api/background` | JSON `dataUrl`, atomic writes |
+| `GET /ws/pose` | panel -> OBS pose relay, validation + per-socket rate limit |
 
-Host dan Origin tetap dibatasi ke `127.0.0.1`/`localhost` port `8770`, sama seperti server Node.
+Host and Origin are still restricted to `127.0.0.1`/`localhost` port `8770`, same as the Node server.
 
-## Port sudah dipakai
+## Port already in use
 
-Kalau `8770` sudah listen (misalnya `npm start` masih jalan, atau LiteTuber kedua dibuka), aplikasi
-tetap membuka jendela dan memakai server yang sudah ada. Ini sengaja: kamu bisa membuka panel desktop
-sambil server Node lama melayani OBS.
+If `8770` is already listening (for example `npm start` is still running, or a second LiteTuber is
+open), the app still opens its window and uses the existing server. This is intentional: you can open
+the desktop panel while an old Node server keeps serving OBS.
 
-## Perintah
+## Commands
 
 ```bash
 npm install
 npm run build                      # frontend -> dist/
-npm run tauri build                # installer (butuh OS target)
-npm run tauri build -- --debug --no-bundle   # cek kompilasi di Linux
-npx tauri info                     # cek toolchain
+npm run tauri build                # installer (needs the target OS)
+npm run tauri build -- --debug --no-bundle   # compile check on Linux
+npx tauri info                     # check the toolchain
 ```
 
-Build installer Windows (NSIS) harus dijalankan di Windows atau GitHub Actions
-(`.github/workflows/tauri.yml`). Lihat [CI-WINDOWS.md](CI-WINDOWS.md).
+The Windows installer build (NSIS) must run on Windows or GitHub Actions
+(`.github/workflows/tauri.yml`). See [CI-WINDOWS.md](CI-WINDOWS.md).
 
-## Lokasi data
+## Data location
 
-Tauri memakai `app_data_dir()`:
+Tauri uses `app_data_dir()`:
 
 - Windows: `%APPDATA%\app.litetuber.desktop\`
 - Linux: `~/.local/share/app.litetuber.desktop/`
 
-Isinya `state.json`, `avatar.vrm`, dan `background.json`. Ini terpisah dari `data/` yang dipakai
-`npm start`, jadi avatar/setelan desktop dimulai kosong pada run pertama.
+It contains `state.json`, `avatar.vrm`, and `background.json`. This is separate from the `data/` used
+by `npm start`, so desktop avatars/settings start empty on the first run.
 
-## Yang belum bisa diverifikasi di laptop Linux
+## What cannot be verified on the Linux laptop
 
-- Izin kamera/mic di WebView2. WebView2 punya izin sendiri; kalau prompt tidak muncul atau kamera
-  ditolak, ini yang perlu dicek pertama di PC.
-- Render dan relay di OBS CEF.
-- Build NSIS/MSI dan hasil installer.
-- Tanda tangan installer; build CI belum ditandatangani, jadi SmartScreen tetap muncul.
+- Camera/mic permissions in WebView2. WebView2 has its own permissions; if the prompt does not appear
+  or the camera is denied, that is the first thing to check on the PC.
+- Rendering and the relay in OBS CEF.
+- NSIS/MSI builds and the installer result.
+- Installer signing; CI builds are not signed, so SmartScreen still appears.
 
-Urutan smoke test di PC ada di [CI-WINDOWS.md](CI-WINDOWS.md).
+The smoke test order on the PC is in [CI-WINDOWS.md](CI-WINDOWS.md).

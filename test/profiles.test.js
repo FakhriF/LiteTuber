@@ -19,7 +19,7 @@ describe("normalizeProfileName", () => {
 describe("describeProfile", () => {
   it("marks which assets a profile holds", () => {
     expect(describeProfile({ name: "Siang", hasAvatar: true, hasBackground: true })).toBe(
-      "Siang · avatar + latar",
+      "Siang · avatar + background",
     );
     expect(describeProfile({ name: "Siang", hasAvatar: true, hasBackground: false })).toBe(
       "Siang · avatar",

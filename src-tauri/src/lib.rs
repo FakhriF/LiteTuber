@@ -14,7 +14,7 @@ pub fn run() {
                 .app_data_dir()
                 .unwrap_or_else(|_| std::env::temp_dir().join("litetuber"));
             if let Err(err) = std::fs::create_dir_all(&data_dir) {
-                eprintln!("litetuber: gagal membuat folder data: {err}");
+                eprintln!("litetuber: could not create the data folder: {err}");
             }
 
             // Bind before the window is created so the first load never races
@@ -24,12 +24,12 @@ pub fn run() {
                 Ok(listener) => server::spawn(listener, data_dir),
                 Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
                     println!(
-                        "litetuber: port {} sudah dipakai, memakai server yang ada",
+                        "litetuber: port {} is already in use, reusing the existing server",
                         server::PORT
                     );
                 }
                 Err(err) => {
-                    eprintln!("litetuber: gagal bind port {}: {err}", server::PORT);
+                    eprintln!("litetuber: could not bind port {}: {err}", server::PORT);
                 }
             }
 
@@ -46,7 +46,7 @@ pub fn run() {
                 .build();
 
             if let Err(err) = window {
-                eprintln!("litetuber: gagal membuka jendela: {err}");
+                eprintln!("litetuber: could not open the window: {err}");
             }
 
             Ok(())

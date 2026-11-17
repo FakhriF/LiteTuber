@@ -100,7 +100,7 @@ describe("profile panel", () => {
     const post = calls.find((call) => call.method === "POST");
     expect(post.url).toBe("/api/profiles");
     expect(calls.find((call) => call.url === "flush").order).toBeLessThan(post.order);
-    expect(toast).toHaveBeenCalledWith('Profil "Malam" disimpan');
+    expect(toast).toHaveBeenCalledWith('Profile "Malam" saved');
   });
 
   it("applies and reloads the active assets", async () => {
@@ -130,7 +130,7 @@ describe("profile panel", () => {
 
     expect(calls.some((call) => call.url === "/api/profiles/p1/apply")).toBe(true);
     expect(reload).toHaveBeenCalledOnce();
-    expect(toast).toHaveBeenCalledWith('Profil "Siang" diterapkan');
+    expect(toast).toHaveBeenCalledWith('Profile "Siang" applied');
   });
 
   it("deletes after confirmation", async () => {
@@ -159,6 +159,6 @@ describe("profile panel", () => {
     expect(calls.some((call) => call.method === "DELETE" && call.url === "/api/profiles/p1")).toBe(
       true,
     );
-    expect(toast).toHaveBeenCalledWith('Profil "Siang" dihapus');
+    expect(toast).toHaveBeenCalledWith('Profile "Siang" deleted');
   });
 });

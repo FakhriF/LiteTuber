@@ -13,7 +13,7 @@ export function normalizeProfileName(value) {
 export function describeProfile(profile) {
   const marks = [];
   if (profile?.hasAvatar) marks.push("avatar");
-  if (profile?.hasBackground) marks.push("latar");
+  if (profile?.hasBackground) marks.push("background");
   return marks.length ? `${profile.name} · ${marks.join(" + ")}` : String(profile?.name ?? "");
 }
 
@@ -43,7 +43,7 @@ export function setupProfiles({ $, toast, flushSettings, reloadFromServer }) {
     select.innerHTML = "";
     const none = document.createElement("option");
     none.value = "";
-    none.textContent = "— belum dipilih —";
+    none.textContent = "— none selected —";
     select.append(none);
     for (const profile of profiles) {
       const option = document.createElement("option");
@@ -86,7 +86,7 @@ export function setupProfiles({ $, toast, flushSettings, reloadFromServer }) {
       const current = profiles.find((profile) => profile.id === selectedId());
       const name = normalizeProfileName($("profileName").value) || current?.name || "";
       if (!name) {
-        toast("Beri nama profil dulu.");
+        toast("Give the profile a name first.");
         return;
       }
       // Settings are pushed with a short debounce; save the latest values first.
@@ -97,12 +97,12 @@ export function setupProfiles({ $, toast, flushSettings, reloadFromServer }) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ name }),
         });
-        if (!res.ok) throw new Error(await readError(res, "Gagal menyimpan profil."));
+        if (!res.ok) throw new Error(await readError(res, "Could not save the profile."));
         const data = await res.json();
         $("profileName").value = "";
         await refresh(data?.profile?.id || "");
         toast(
-          data?.replaced ? `Profil "${name}" diperbarui` : `Profil "${name}" disimpan`,
+          data?.replaced ? `Profile "${name}" updated` : `Profile "${name}" saved`,
         );
       } catch (err) {
         toast(String(err.message || err));
@@ -114,15 +114,15 @@ export function setupProfiles({ $, toast, flushSettings, reloadFromServer }) {
     run(async () => {
       const id = selectedId();
       if (!id) {
-        toast("Pilih profil dulu.");
+        toast("Choose a profile first.");
         return;
       }
       try {
         const res = await fetch(`/api/profiles/${id}/apply`, { method: "POST" });
-        if (!res.ok) throw new Error(await readError(res, "Gagal menerapkan profil."));
+        if (!res.ok) throw new Error(await readError(res, "Could not apply the profile."));
         const data = await res.json();
         await reloadFromServer();
-        toast(`Profil "${data?.name || "dipilih"}" diterapkan`);
+        toast(`Profile "${data?.name || "selected"}" applied`);
       } catch (err) {
         toast(String(err.message || err));
       }
@@ -133,14 +133,14 @@ export function setupProfiles({ $, toast, flushSettings, reloadFromServer }) {
     run(async () => {
       const profile = profiles.find((item) => item.id === selectedId());
       if (!profile) return;
-      if (!window.confirm(`Hapus profil "${profile.name}"? File avatar dan latarnya ikut dihapus.`)) {
+      if (!window.confirm(`Delete profile "${profile.name}"? Its avatar and background files will be deleted too.`)) {
         return;
       }
       try {
         const res = await fetch(`/api/profiles/${profile.id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error(await readError(res, "Gagal menghapus profil."));
+        if (!res.ok) throw new Error(await readError(res, "Could not delete the profile."));
         await refresh("");
-        toast(`Profil "${profile.name}" dihapus`);
+        toast(`Profile "${profile.name}" deleted`);
       } catch (err) {
         toast(String(err.message || err));
       }

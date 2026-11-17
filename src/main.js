@@ -84,7 +84,7 @@ function rebuildRenderer() {
   try {
     next = buildRenderer(nextCanvas);
   } catch (err) {
-    console.error("rebuild renderer gagal", err);
+    console.error("renderer rebuild failed", err);
     return false;
   }
   const old = renderer;
@@ -120,11 +120,11 @@ const mic = new MicMouth();
 
 const camRetry = new RetryLoop({
   onExhausted: () =>
-    toast("Kamera belum bisa dipulihkan. Klik Aktifkan kamera untuk mencoba lagi.", 8000),
+    toast("Camera could not be recovered. Click Start camera to try again.", 8000),
 });
 const micRetry = new RetryLoop({
   onExhausted: () =>
-    toast("Mic belum bisa dipulihkan. Klik Aktifkan mic untuk mencoba lagi.", 8000),
+    toast("Mic could not be recovered. Click Start mic to try again.", 8000),
 });
 let deviceChangeTimer = 0;
 
@@ -177,18 +177,18 @@ function toast(message, ms = 2400) {
 function mediaError(err, kind) {
   const name = err?.name || "";
   const map = {
-    NotAllowedError: `Izin ${kind} ditolak. Klik ikon gembok/kamera di address bar lalu pilih Allow, kemudian coba lagi.`,
-    PermissionDeniedError: `Izin ${kind} ditolak.`,
-    SecurityError: `Akses ${kind} butuh http://127.0.0.1 atau https.`,
-    NotFoundError: `${kind} tidak ditemukan.`,
-    DevicesNotFoundError: `${kind} tidak ditemukan.`,
-    NotReadableError: `${kind} sedang dipakai aplikasi lain (OBS/Zoom/browser lain).`,
-    TrackStartError: `${kind} gagal dipakai aplikasi lain.`,
-    AbortError: `${kind} gagal dibuka.`,
-    OverconstrainedError: `${kind} tidak mendukung setting yang diminta.`,
-    NotSupportedError: `Browser tidak mendukung akses ${kind}.`,
+    NotAllowedError: `${kind} permission was denied. Click the lock/camera icon in the address bar, choose Allow, then try again.`,
+    PermissionDeniedError: `${kind} permission was denied.`,
+    SecurityError: `Access to ${kind} needs http://127.0.0.1 or https.`,
+    NotFoundError: `${kind} was not found.`,
+    DevicesNotFoundError: `${kind} was not found.`,
+    NotReadableError: `${kind} is being used by another app (OBS/Zoom/another browser).`,
+    TrackStartError: `${kind} could not be used because another app is using it.`,
+    AbortError: `${kind} could not be opened.`,
+    OverconstrainedError: `${kind} does not support the requested setting.`,
+    NotSupportedError: `This browser does not support ${kind} access.`,
   };
-  return map[name] || `Gagal mengakses ${kind}: ${err?.message || err}`;
+  return map[name] || `Could not access ${kind}: ${err?.message || err}`;
 }
 
 function updateCamPreview() {
@@ -449,7 +449,7 @@ async function setBackgroundImageFromStore() {
   if (dataUrl) {
     $("bgImage").style.backgroundImage = `url("${dataUrl}")`;
   } else if (settings.bg === "image") {
-    toast("Belum ada gambar latar. Pilih gambar dulu.");
+    toast("No background image yet. Choose an image first.");
     settings.bg = "transparent";
     store.saveSettings(settings);
     applyBackground();
@@ -461,7 +461,7 @@ async function loadVrmBuffer(buffer, name, persist = true) {
   if (avatarBusy) return;
   const check = inspectVrm(new Uint8Array(buffer));
   if (!check.ok) {
-    toast(`Bukan avatar VRM valid: ${check.reason || "file tidak lengkap"}`);
+    toast(`Not a valid VRM avatar: ${check.reason || "incomplete file"}`);
     return;
   }
   avatarBusy = true;
@@ -503,7 +503,7 @@ async function onVrmFile(file) {
 }
 
 function cameraUiOff() {
-  $("camBtn").textContent = "Aktifkan kamera";
+  $("camBtn").textContent = "Start camera";
   $("camBtn").classList.remove("on");
   $("calBtn").disabled = true;
   updateCamPreview();
@@ -512,7 +512,7 @@ function cameraUiOff() {
 async function startCamera(deviceId, { auto = false } = {}) {
   if (face.running) return true;
   const slowHint = setTimeout(
-    () => toast("Menunggu izin kamera… cek popup izin atau ikon kamera di address bar", 6000),
+    () => toast("Waiting for camera permission… check the permission popup or the camera icon in the address bar", 6000),
     3500,
   );
   try {
@@ -520,16 +520,16 @@ async function startCamera(deviceId, { auto = false } = {}) {
     await face.openCamera(deviceId || settings.camDevice || null, $("cam"));
     clearTimeout(slowHint);
     camStartedAt = performance.now();
-    $("camBtn").textContent = "Matikan kamera";
+    $("camBtn").textContent = "Stop camera";
     $("camBtn").classList.add("on");
     $("calBtn").disabled = false;
     updateCamPreview();
     refreshDevices();
     dismissHint();
-    toast("Kamera aktif, menyiapkan model wajah…", 3000);
+    toast("Camera on, loading the face model…", 3000);
     await face.ensureLandmarker();
     camRetry.reset();
-    toast("Tracking wajah siap — klik Kalibrasi saat posisi netral");
+    toast("Face tracking ready — click Calibrate at your neutral position");
     return true;
   } catch (err) {
     clearTimeout(slowHint);
@@ -540,8 +540,8 @@ async function startCamera(deviceId, { auto = false } = {}) {
     if (fatal) camRetry.stop();
     // During automatic recovery the retry loop owns the schedule and the
     // final message; a manual start reports the error directly.
-    if (fatal || !auto) toast(mediaError(err, "kamera"), 7000);
-    else toast("Kamera belum tersedia. Mencoba lagi…", 3000);
+    if (fatal || !auto) toast(mediaError(err, "camera"), 7000);
+    else toast("Camera not available yet. Retrying…", 3000);
     return false;
   }
 }
@@ -550,14 +550,14 @@ function beginCameraRecovery() {
   if (camRetry.pending) return;
   const delay = camRetry.schedule(() => startCamera(settings.camDevice || null, { auto: true }));
   if (delay === null) {
-    toast("Kamera belum bisa dipulihkan. Klik Aktifkan kamera untuk mencoba lagi.", 8000);
+    toast("Camera could not be recovered. Click Start camera to try again.", 8000);
   }
 }
 
 function onCameraLost() {
   cameraUiOff();
   camStartedAt = 0;
-  toast("Kamera terputus. Mencoba menyambung ulang…", 5000);
+  toast("Camera disconnected. Trying to reconnect…", 5000);
   beginCameraRecovery();
 }
 
@@ -566,7 +566,7 @@ function stopCamera({ silent = false } = {}) {
   face.stop();
   face.calibrated = false;
   cameraUiOff();
-  if (!silent) toast("Kamera dimatikan");
+  if (!silent) toast("Camera stopped");
 }
 
 function toggleCamera() {
@@ -577,14 +577,14 @@ function toggleCamera() {
 async function refreshDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
-    fillDevices($("camDevice"), devices.filter((d) => d.kind === "videoinput"), "Kamera default");
-    fillDevices($("micDevice"), devices.filter((d) => d.kind === "audioinput"), "Mic default");
+    fillDevices($("camDevice"), devices.filter((d) => d.kind === "videoinput"), "Default camera", "Camera");
+    fillDevices($("micDevice"), devices.filter((d) => d.kind === "audioinput"), "Default mic", "Mic");
   } catch {
     /* devices are optional */
   }
 }
 
-function fillDevices(select, devices, fallbackLabel) {
+function fillDevices(select, devices, fallbackLabel, prefix) {
   if (!select) return;
   const current = select.value;
   select.innerHTML = "";
@@ -595,7 +595,7 @@ function fillDevices(select, devices, fallbackLabel) {
   devices.forEach((d, i) => {
     const opt = document.createElement("option");
     opt.value = d.deviceId;
-    opt.textContent = d.label || `${fallbackLabel.split(" ")[0]} ${i + 1}`;
+    opt.textContent = d.label || `${prefix} ${i + 1}`;
     select.append(opt);
   });
   select.hidden = devices.length < 2;
@@ -604,7 +604,7 @@ function fillDevices(select, devices, fallbackLabel) {
 }
 
 function micUiOff() {
-  $("micBtn").textContent = "Aktifkan mic";
+  $("micBtn").textContent = "Start mic";
   $("micBtn").classList.remove("on");
 }
 
@@ -618,9 +618,9 @@ async function startMic(deviceId, { auto = false } = {}) {
     $("micBtn").classList.add("on");
     micRetry.reset();
     if (mic.suspended) {
-      toast("Mic aktif — klik sekali di halaman supaya audio jalan");
+      toast("Mic on — click once on the page so audio can start");
     } else {
-      toast("Mic aktif untuk gerak mulut");
+      toast("Mic on for mouth movement");
     }
     return true;
   } catch (err) {
@@ -631,7 +631,7 @@ async function startMic(deviceId, { auto = false } = {}) {
     const fatal = isFatalMediaError(err);
     if (fatal) micRetry.stop();
     if (fatal || !auto) toast(mediaError(err, "mic"), 7000);
-    else toast("Mic belum tersedia. Mencoba lagi…", 3000);
+    else toast("Mic not available yet. Retrying…", 3000);
     return false;
   }
 }
@@ -640,7 +640,7 @@ function beginMicRecovery() {
   if (micRetry.pending) return;
   const delay = micRetry.schedule(() => startMic(settings.micDevice || null, { auto: true }));
   if (delay === null) {
-    toast("Mic belum bisa dipulihkan. Klik Aktifkan mic untuk mencoba lagi.", 8000);
+    toast("Mic could not be recovered. Click Start mic to try again.", 8000);
   }
 }
 
@@ -665,9 +665,9 @@ async function toggleMic() {
 function calibrate() {
   if (face.calibrate()) {
     smoothHead.identity();
-    toast("Posisi netral disimpan");
+    toast("Neutral position saved");
   } else {
-    toast("Wajah belum terdeteksi");
+    toast("Face not detected yet");
   }
 }
 
@@ -724,7 +724,7 @@ function renderPresetOptions(selected = $("presetList").value) {
   select.innerHTML = "";
   const none = document.createElement("option");
   none.value = "";
-  none.textContent = "— belum dipilih —";
+  none.textContent = "— none selected —";
   select.append(none);
   for (const name of names) {
     const option = document.createElement("option");
@@ -768,7 +768,7 @@ function onDeviceChange() {
     if ((face.running || camRetry.pending) && !(await deviceListed(camWanted, "videoinput"))) {
       settings.camDevice = "";
       commit();
-      toast("Kamera yang dipakai hilang. Beralih ke kamera default.", 5000);
+      toast("The selected camera disappeared. Switching to the default camera.", 5000);
       if (face.running) {
         stopCamera({ silent: true });
         await startCamera(null, { auto: true });
@@ -778,7 +778,7 @@ function onDeviceChange() {
     if ((mic.running || micRetry.pending) && !(await deviceListed(micWanted, "audioinput"))) {
       settings.micDevice = "";
       commit();
-      toast("Mic yang dipakai hilang. Beralih ke mic default.", 5000);
+      toast("The selected mic disappeared. Switching to the default mic.", 5000);
       if (mic.running) {
         micRetry.reset();
         mic.stop();
@@ -801,8 +801,8 @@ $("clearVrm").addEventListener("click", async () => {
   await store.clearVrm().catch(() => {});
   fetch("/api/avatar", { method: "DELETE" }).catch(() => {});
   await switchToPlaceholder();
-  $("vrmName").textContent = "belum ada avatar";
-  toast("Avatar tersimpan dihapus");
+  $("vrmName").textContent = "no avatar yet";
+  toast("Saved avatar removed");
 });
 
 $("camBtn").addEventListener("click", async () => {
@@ -837,7 +837,7 @@ $("micBtn").addEventListener("click", toggleMic);
 $("calBtn").addEventListener("click", calibrate);
 $("mouthTest").addEventListener("click", () => {
   mouthTestUntil = performance.now() + 1800;
-  toast("Tes ekspresi — kalau avatar tidak bergerak, modelnya tidak punya ekspresi mulut", 3500);
+  toast("Expression test — if the avatar does not move, the model has no mouth expressions", 3500);
 });
 
 $("hideBtn").addEventListener("click", () => {
@@ -872,7 +872,7 @@ $("delegate").addEventListener("change", (e) => {
   face.delegate = settings.delegate;
   face.resetModel();
   commit();
-  if (face.running) toast("Prosesor tracking diganti — klik matikan lalu aktifkan kamera");
+  if (face.running) toast("Tracking processor changed — stop and start the camera");
 });
 
 $("micGain").addEventListener("input", (e) => {
@@ -960,7 +960,7 @@ $("bgFile").addEventListener("change", async (e) => {
     applyBackground();
     syncUI();
     commit();
-    await store.saveBackground(dataUrl).catch(() => toast("Gambar terlalu besar untuk disimpan"));
+    await store.saveBackground(dataUrl).catch(() => toast("Image is too large to save"));
     fetch("/api/background", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -980,7 +980,7 @@ $("presetSave").addEventListener("click", () => {
     return;
   }
   if (!store.savePresets(result.presets)) {
-    toast("Preset gagal disimpan. Penyimpanan browser penuh?");
+    toast("Could not save the preset. Is browser storage full?");
     return;
   }
   presets = result.presets;
@@ -988,8 +988,8 @@ $("presetSave").addEventListener("click", () => {
   renderPresetOptions(result.preset.name);
   toast(
     result.replaced
-      ? `Preset "${result.preset.name}" diperbarui`
-      : `Preset "${result.preset.name}" disimpan`,
+      ? `Preset "${result.preset.name}" updated`
+      : `Preset "${result.preset.name}" saved`,
   );
 });
 
@@ -997,34 +997,34 @@ $("presetApply").addEventListener("click", () => {
   const name = $("presetList").value;
   const preset = presets.find((item) => item.name === name);
   if (!preset) {
-    toast("Pilih preset dulu.");
+    toast("Choose a preset first.");
     return;
   }
   applyPresetSettings(preset);
   if (settings.bg === "image" && !$("bgImage").style.backgroundImage) {
-    toast(`Preset "${name}" diterapkan. Belum ada gambar latar; pilih gambar di tab Tampilan.`, 4200);
+    toast(`Preset "${name}" applied. No background image yet; choose one in the Display tab.`, 4200);
   } else {
-    toast(`Preset "${name}" diterapkan`);
+    toast(`Preset "${name}" applied`);
   }
 });
 
 $("presetDelete").addEventListener("click", () => {
   const name = $("presetList").value;
   if (!name) return;
-  if (!window.confirm(`Hapus preset "${name}"?`)) return;
+  if (!window.confirm(`Delete preset "${name}"?`)) return;
   const next = deletePreset(presets, name);
   if (!store.savePresets(next)) {
-    toast("Preset gagal dihapus.");
+    toast("Could not delete the preset.");
     return;
   }
   presets = next;
   renderPresetOptions("");
-  toast(`Preset "${name}" dihapus`);
+  toast(`Preset "${name}" deleted`);
 });
 
 $("presetExport").addEventListener("click", () => {
   if (!presets.length) {
-    toast("Belum ada preset untuk diekspor.");
+    toast("No presets to export yet.");
     return;
   }
   const file = exportPresets(presets);
@@ -1035,7 +1035,7 @@ $("presetExport").addEventListener("click", () => {
   link.download = `litetuber-preset-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast(`${file.presets.length} preset diekspor`);
+  toast(`${file.presets.length} preset${file.presets.length === 1 ? "" : "s"} exported`);
 });
 
 $("presetImport").addEventListener("click", () => $("presetFile").click());
@@ -1047,7 +1047,7 @@ $("presetFile").addEventListener("change", async (e) => {
   try {
     payload = JSON.parse(await file.text());
   } catch {
-    toast("File bukan JSON yang valid.");
+    toast("File is not valid JSON.");
     return;
   }
   const result = importPresets(presets, payload);
@@ -1056,14 +1056,14 @@ $("presetFile").addEventListener("change", async (e) => {
     return;
   }
   if (!store.savePresets(result.presets)) {
-    toast("Preset gagal disimpan. Penyimpanan browser penuh?");
+    toast("Could not save the preset. Is browser storage full?");
     return;
   }
   presets = result.presets;
   renderPresetOptions("");
-  const parts = [`${result.added} preset diimpor`];
-  if (result.skipped) parts.push(`${result.skipped} dilewati karena nama sudah ada`);
-  if (result.dropped) parts.push(`${result.dropped} tidak muat (maksimal 24)`);
+  const parts = [`${result.added} preset${result.added === 1 ? "" : "s"} imported`];
+  if (result.skipped) parts.push(`${result.skipped} skipped because the name already exists`);
+  if (result.dropped) parts.push(`${result.dropped} did not fit (max 24)`);
   toast(parts.join(", "), 4200);
 });
 
@@ -1075,7 +1075,7 @@ $("obsBtn").addEventListener("click", async () => {
   const url = `${location.origin}${location.pathname}?ui=0`;
   try {
     await navigator.clipboard.writeText(url);
-    toast(`URL OBS disalin (mode tampilan): ${url}`, 3200);
+    toast(`OBS URL copied (display mode): ${url}`, 3200);
   } catch {
     toast(url, 6000);
   }
@@ -1084,7 +1084,7 @@ $("obsBtn").addEventListener("click", async () => {
 window.addEventListener("pointerdown", async () => {
   if (mic.running && mic.suspended) {
     const resumed = await mic.resume();
-    if (resumed) toast("Audio mic aktif");
+    if (resumed) toast("Mic audio resumed");
   }
 });
 
@@ -1364,32 +1364,32 @@ function frame(now) {
     lastStatus = now;
     const camEl = $("statusCam");
     if (!face.running) {
-      camEl.textContent = "kamera: off";
+      camEl.textContent = "cam: off";
       camEl.className = "";
     } else {
       const w = face.video?.videoWidth || 0;
       const h = face.video?.videoHeight || 0;
       if (w > 0) {
-        camEl.textContent = `kamera: ${w}×${h}`;
+        camEl.textContent = `cam: ${w}×${h}`;
         camEl.className = "good";
       } else if (now - camStartedAt > 3000) {
-        camEl.textContent = "kamera: tanpa gambar";
+        camEl.textContent = "cam: no picture";
         camEl.className = "bad";
       } else {
-        camEl.textContent = "kamera: menunggu…";
+        camEl.textContent = "cam: waiting…";
         camEl.className = "";
       }
     }
 
     const faceEl = $("statusFace");
     if (!face.running) {
-      faceEl.textContent = "wajah: –";
+      faceEl.textContent = "face: –";
       faceEl.className = "";
     } else if (face.hasFace) {
-      faceEl.textContent = "wajah: terdeteksi";
+      faceEl.textContent = "face: detected";
       faceEl.className = "good";
     } else {
-      faceEl.textContent = "wajah: tidak terlihat";
+      faceEl.textContent = "face: not visible";
       faceEl.className = now - camStartedAt > 4000 ? "bad" : "";
     }
 
@@ -1440,7 +1440,7 @@ async function boot() {
   } else {
     const saved = await store.loadVrm().catch(() => null);
     if (saved?.buffer) {
-      $("vrmName").textContent = `${saved.name} (tersimpan)`;
+      $("vrmName").textContent = `${saved.name} (saved)`;
       await loadVrmBuffer(saved.buffer, saved.name, true);
     }
   }
