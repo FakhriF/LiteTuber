@@ -32,8 +32,10 @@ on bug reports and user needs.
   every frame, window resizing is coalesced and skipped when nothing changed, and shaders are compiled
   when an avatar loads instead of during the first draw. Numbers are estimates from pixel counts, not
   profiler runs on Windows.
-- **Split `main.js`.** Not done. Only the tracking-resolution decision moved to `src/track-scale.js`;
-  the render loop, server sync, and UI wiring are still in one file.
+- **Split `main.js`.** Done. `src/main.js` is now a ~250-line composition root; the panel and its
+  controls (`panel.js`), media sessions (`media.js`), renderer and quality ladder (`view.js`), avatar
+  and background loading (`avatar-loader.js`), server sync (`server-sync.js`), the render loop
+  (`loop.js`), toasts (`ui.js`), and the pose key list (`pose-keys.js`) each live on their own.
 - **Hotkeys/Stream Deck.** Not started; this is the feature part of 0.5 if it stays in this version.
 
 ## Later
