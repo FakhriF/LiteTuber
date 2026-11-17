@@ -24,26 +24,19 @@ on bug reports and user needs.
 - Portable ZIP without an installer (`*-portable.zip`) uploaded to the release next to the installer;
   data stays in `%APPDATA%`. A true portable mode (data next to the `.exe`) does not exist yet.
 - English UI, README, and docs.
-
-## v0.5
-
-- **Performance pass.** Done, apart from anything measured later: MediaPipe gets a 480×360 frame on
-  the CPU processor or a tracking rate of 20 Hz and below, the pose relay no longer allocates an array
-  every frame, window resizing is coalesced and skipped when nothing changed, and shaders are compiled
-  when an avatar loads instead of during the first draw. Numbers are estimates from pixel counts, not
-  profiler runs on Windows.
-- **Split `main.js`.** Done. `src/main.js` is now a ~250-line composition root; the panel and its
-  controls (`panel.js`), media sessions (`media.js`), renderer and quality ladder (`view.js`), avatar
-  and background loading (`avatar-loader.js`), server sync (`server-sync.js`), the render loop
-  (`loop.js`), toasts (`ui.js`), and the pose key list (`pose-keys.js`) each live on their own.
-- **Hotkeys/Stream Deck.** Not started; this is the feature part of 0.5 if it stays in this version.
+- Performance pass (0.5.0): MediaPipe gets a 480×360 frame on the CPU processor or a tracking rate of
+  20 Hz and below, the pose relay no longer allocates an array every frame, window resizing is
+  coalesced, and shaders are compiled when an avatar loads instead of during the first draw. Numbers
+  are estimates from pixel counts, not profiler runs on Windows.
+- Split `main.js` (0.5.0): `main.js` is a ~250-line composition root; the panel, media sessions,
+  render loop, renderer and quality ladder, avatar loading, server sync, toasts, and pose keys each
+  live in their own module.
 
 ## Later
 
 - **MSIX and the Microsoft Store.** The cheapest way to remove SmartScreen, because the Store
   re-signs the package.
-- **Hotkeys/Stream Deck.** Switch expression, background, or profile from a button, if it does not
-  fit in 0.5.
+- **Hotkeys/Stream Deck.** Switch expression, background, or profile from a button.
 - **Auto-update.** Needs a signed installer first.
 - **Hand tracking.** Deferred until full-body framing is actually needed; the cost is an extra model,
   finger bones that VRM files may not have, and higher latency.

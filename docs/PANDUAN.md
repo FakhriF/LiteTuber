@@ -143,17 +143,17 @@ change.
 
 ## 5. Release status
 
-The current stable version is **0.3.0**. The installer and portable ZIP are on the
+The current stable version is **0.5.0**. The installer and portable ZIP are on the
 [Releases](https://github.com/FakhriF/LiteTuber/releases) page; both were tested on Windows.
-Version 0.3.0 added full profiles, preset export/import, and the portable ZIP.
-
-Version 0.4.0 translates the app and all documentation to English. It is not released yet.
+Version 0.5.0 ships the English app and documentation, the performance pass, and the split of
+`main.js`. There is no 0.4.0 release: that translation work is part of 0.5.0.
 
 Available:
 
 - browser mode via `npm start`,
 - NSIS installer for desktop (since 0.2.0),
 - portable ZIP without an installer, data stays in `%APPDATA%` (since 0.3.0),
+- the app and all documentation in English (since 0.5.0),
 - desktop builds from source,
 - a GitHub Actions workflow that builds the installer and portable ZIP from a `v*` tag,
 - camera and mic recovery after a device disconnects or changes.
