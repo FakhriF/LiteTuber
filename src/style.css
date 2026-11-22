@@ -1,16 +1,23 @@
 :root {
-  --bg: #101114;
-  --panel: #17181c;
-  --panel-2: #1d1f24;
-  --line: #2a2c33;
-  --line-strong: #3a3d45;
-  --text: #eee9e2;
-  --muted: #9a968f;
-  --accent: #d97757;
-  --accent-2: #7fb8a4;
-  --radius: 9px;
+  /* Warm ink instead of neutral charcoal: still readable in OBS, less template-like. */
+  --bg: #17141f;
+  --panel: #1e1a2a;
+  --panel-2: #272139;
+  --control: #2b2540;
+  --control-hover: #362f50;
+  --statusbar: #1a1626;
+  --track: #3a3450;
+  --line: #3b3452;
+  --line-strong: #554b73;
+  --text: #f7f1ff;
+  --muted: #a9a1bb;
+  --accent: #ff9270;
+  --accent-2: #9aa8ff;
+  --accent-soft: #43304a;
+  --accent-line: #a5626a;
+  --accent-text: #ffdccd;
+  --radius: 10px;
 }
-
 * {
   box-sizing: border-box;
 }
@@ -36,7 +43,7 @@ body.blue {
 }
 
 body.dark {
-  background: #101014;
+  background: var(--bg);
 }
 
 #stage {
@@ -87,7 +94,7 @@ body.dark {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 22px rgba(0, 0, 0, 0.42);
   overflow: hidden;
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
@@ -115,14 +122,12 @@ body.dark {
   color: var(--text);
 }
 
+/* One small sparkle: enough character without turning the panel into a mascot. */
 .logo::before {
-  content: "";
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 7px;
-  border-radius: 2px;
-  background: var(--accent);
+  content: "✦";
+  margin-right: 6px;
+  color: var(--accent);
+  font-size: 11px;
   vertical-align: 1px;
 }
 
@@ -169,8 +174,8 @@ body.dark {
   color: var(--muted);
   background: transparent;
   border: 1px solid var(--line-strong);
-  border-radius: 5px;
-  padding: 2px 7px;
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 .panel .body {
@@ -184,7 +189,7 @@ body.dark {
 }
 
 .panel .body::-webkit-scrollbar-thumb {
-  background: #3a3d45;
+  background: var(--line-strong);
   border-radius: 8px;
 }
 
@@ -200,9 +205,20 @@ section:last-child {
 h3 {
   margin: 0 0 9px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0;
   color: var(--text);
+}
+
+h3::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  margin-right: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+  vertical-align: -1px;
 }
 
 button,
@@ -210,7 +226,7 @@ select,
 input[type="file"] {
   font: inherit;
   color: var(--text);
-  background: #22242a;
+  background: var(--control);
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 6px 10px;
@@ -220,8 +236,8 @@ input[type="file"] {
 
 button:hover,
 select:hover {
-  background: #2a2d34;
-  border-color: #4a4d56;
+  background: var(--control-hover);
+  border-color: var(--line-strong);
 }
 
 input[type="text"] {
@@ -229,7 +245,7 @@ input[type="text"] {
   padding: 6px 10px;
   font: inherit;
   color: var(--text);
-  background: #22242a;
+  background: var(--control);
   border: 1px solid var(--line-strong);
   border-radius: 6px;
 }
@@ -254,11 +270,16 @@ select option {
 }
 
 select option:checked {
-  background-color: #3a2a24;
-  color: #fff;
+  background-color: var(--accent-soft);
+  color: var(--accent-text);
 }
 
-button:active {
+/* One-pixel lift is enough to feel responsive; no glow or scale animation. */
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+button:not(:disabled):active {
   transform: translateY(1px);
 }
 
@@ -275,14 +296,14 @@ button.primary {
 }
 
 button.primary:hover {
-  background: #e38663;
-  border-color: #e38663;
+  background: #ffa588;
+  border-color: #ffa588;
 }
 
 button.on {
   background: var(--accent-2);
   border-color: var(--accent-2);
-  color: #0e1a16;
+  color: #151030;
   font-weight: 650;
 }
 
@@ -308,6 +329,14 @@ button.icon {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The empty avatar line doubles as the drop hint, so give it a dashed frame. */
+#vrmName {
+  padding: 6px 8px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
 }
 
 .small {
@@ -395,9 +424,9 @@ button.icon {
 }
 
 .chips button.active {
-  background: #3a2a24;
-  border-color: #8d5a47;
-  color: #f3ded5;
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-text);
 }
 
 .status {
@@ -446,9 +475,9 @@ button.icon {
   left: 50%;
   bottom: 26px;
   transform: translate(-50%, 20px);
-  background: #101114;
+  background: var(--panel);
   border: 1px solid var(--line-strong);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 8px 14px;
   font-size: 12px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
@@ -505,7 +534,7 @@ details.adv[open] summary::before {
   gap: 4px 12px;
   padding: 8px 12px;
   border-top: 1px solid var(--line);
-  background: #141519;
+  background: var(--statusbar);
   color: var(--muted);
   font-size: 10.5px;
 }
@@ -528,7 +557,7 @@ details.adv[open] summary::before {
   position: relative;
   height: 4px;
   border-radius: 999px;
-  background: #30333a;
+  background: var(--track);
   overflow: hidden;
 }
 
@@ -562,7 +591,7 @@ details.adv[open] summary::before {
   flex: 0 0 auto;
   padding: 4px 7px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: 999px;
   color: var(--muted);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
@@ -574,12 +603,12 @@ details.adv[open] summary::before {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #555862;
+  background: var(--track);
 }
 
 .obs-state.on {
   color: var(--accent-2);
-  border-color: #3f5f55;
+  border-color: var(--accent-line);
 }
 
 .obs-state.on::before {

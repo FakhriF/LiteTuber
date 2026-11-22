@@ -32,11 +32,22 @@ on bug reports and user needs.
   render loop, renderer and quality ladder, avatar loading, server sync, toasts, and pose keys each
   live in their own module.
 
+## v0.6
+
+- **Panel theme refresh.** Warmer ink palette with coral and periwinkle accents, rounded status
+  chips, one small sparkle next to the logo, a dashed frame around the empty avatar slot, and a
+  one-pixel button hover. CSS only: no new dependencies, no blur, no gradients, and no animation
+  that runs all the time.
+
 ## Later
 
 - **MSIX and the Microsoft Store.** The cheapest way to remove SmartScreen, because the Store
   re-signs the package.
-- **Hotkeys/Stream Deck.** Switch expression, background, or profile from a button.
+- **Hotkeys/Stream Deck.** Deferred until there is a real need. Local shortcuts only work while
+  the LiteTuber window has focus; a Stream Deck trigger would need a token-protected local HTTP
+  endpoint in both servers.
+- **True portable mode.** Keep data beside the `.exe` instead of `%APPDATA%`. Bigger change and
+  needs Windows testing.
 - **Auto-update.** Needs a signed installer first.
 - **Hand tracking.** Deferred until full-body framing is actually needed; the cost is an extra model,
   finger bones that VRM files may not have, and higher latency.
