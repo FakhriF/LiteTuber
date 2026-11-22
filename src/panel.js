@@ -12,6 +12,9 @@ import { setupProfiles } from "./profiles.js";
 // The settings panel: panel chrome, every control, presets, profiles, keyboard
 // shortcuts, and drag and drop.
 export function createPanel({ $, settings, quality, S, api, face, mic }) {
+  // The ?ui=0 viewer must never show a way back into the panel; OBS displays
+  // it as a clean avatar layer.
+  const isViewer = new URLSearchParams(location.search).get("ui") === "0";
   let activeTab = "avatar";
   try {
     activeTab = localStorage.getItem("litetuber.tab") || "avatar";
@@ -34,9 +37,24 @@ export function createPanel({ $, settings, quality, S, api, face, mic }) {
     }
   }
 
+  let revealTimer = 0;
   function applyPanel() {
     $("panel").classList.toggle("hidden", settings.panelHidden);
     $("hideBtn").textContent = settings.panelHidden ? "+" : "–";
+    const handle = $("showBtn");
+    if (isViewer) {
+      handle?.classList.remove("reveal");
+    } else if (settings.panelHidden) {
+      // Show it briefly after hiding, then leave it to the pointer hotspot.
+      handle?.classList.add("reveal");
+      clearTimeout(revealTimer);
+      revealTimer = setTimeout(() => {
+        if (settings.panelHidden) handle?.classList.remove("reveal");
+      }, 2200);
+    } else {
+      clearTimeout(revealTimer);
+      handle?.classList.remove("reveal");
+    }
     api.updateCamPreview();
   }
 
@@ -194,6 +212,25 @@ export function createPanel({ $, settings, quality, S, api, face, mic }) {
     applyPanel();
     commit();
   });
+
+  const showBtn = $("showBtn");
+  showBtn?.addEventListener("click", () => {
+    settings.panelHidden = false;
+    applyPanel();
+    commit();
+  });
+
+  // Without the panel there is no visible way back except H. Moving the mouse
+  // over the old panel's corner brings a small handle back.
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      if (isViewer || !settings.panelHidden || !showBtn) return;
+      const near = e.clientX <= 340 && e.clientY <= 180;
+      showBtn.classList.toggle("reveal", near);
+    },
+    { passive: true },
+  );
 
   $("sens").addEventListener("input", (e) => {
     settings.sens = Number(e.target.value);

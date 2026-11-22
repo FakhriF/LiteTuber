@@ -96,6 +96,9 @@ computer are covered in [docs/PANDUAN.md](docs/PANDUAN.md).
 | `R` | calibrate the neutral head position |
 | `F` | fullscreen |
 
+If the panel is hidden, a **Panel** handle appears briefly near the top-left. Move the mouse back to
+that corner to reveal it again, then click it. `H` still works too.
+
 ## Troubleshooting
 
 - **Camera does not show up**: check camera permissions in the browser or Windows, and make sure no
