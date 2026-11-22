@@ -143,10 +143,11 @@ change.
 
 ## 5. Release status
 
-The current stable version is **0.5.0**. The installer and portable ZIP are on the
-[Releases](https://github.com/FakhriF/LiteTuber/releases) page; both were tested on Windows.
-Version 0.5.0 ships the English app and documentation, the performance pass, and the split of
-`main.js`. There is no 0.4.0 release: that translation work is part of 0.5.0.
+The current stable version is **0.6.0**. The installer and portable ZIP are on the
+[Releases](https://github.com/FakhriF/LiteTuber/releases) page. Version 0.6.0 refreshes the panel
+theme and adds a handle that reopens a hidden panel. Version 0.5.0 shipped the English app and
+documentation, the performance pass, and the split of `main.js`; there is no 0.4.0 release: that
+translation work is part of 0.5.0.
 
 Available:
 
@@ -154,6 +155,7 @@ Available:
 - NSIS installer for desktop (since 0.2.0),
 - portable ZIP without an installer, data stays in `%APPDATA%` (since 0.3.0),
 - the app and all documentation in English (since 0.5.0),
+- refreshed panel theme and a handle to reopen the hidden panel (since 0.6.0),
 - desktop builds from source,
 - a GitHub Actions workflow that builds the installer and portable ZIP from a `v*` tag,
 - camera and mic recovery after a device disconnects or changes.

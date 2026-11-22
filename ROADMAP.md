@@ -31,16 +31,13 @@ on bug reports and user needs.
 - Split `main.js` (0.5.0): `main.js` is a ~250-line composition root; the panel, media sessions,
   render loop, renderer and quality ladder, avatar loading, server sync, toasts, and pose keys each
   live in their own module.
-
-## v0.6
-
-- **Panel theme refresh.** Warmer ink palette with coral and periwinkle accents, rounded status
+- Panel theme refresh (0.6.0). Warmer ink palette with coral and periwinkle accents, rounded status
   chips, one small sparkle next to the logo, a dashed frame around the empty avatar slot, and a
   one-pixel button hover. CSS only: no new dependencies, no blur, no gradients, and no animation
   that runs all the time.
-- **Hidden-panel handle.** Hiding the panel briefly shows a small **Panel** pill in the top-left;
-  moving the pointer back to that corner reveals it again. Clicking it restores the panel, and `H`
-  still works. The OBS viewer never shows the handle.
+- Hidden-panel handle (0.6.0). Hiding the panel briefly shows a small **Panel** pill in the
+  top-left; moving the pointer back to that corner reveals it again. Clicking it restores the panel,
+  and `H` still works. The OBS viewer never shows the handle.
 
 ## Later
 
